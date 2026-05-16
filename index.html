@@ -8,7 +8,21 @@
 <meta name="apple-mobile-web-app-title" content="Max & Laura 💍">
 <meta name="theme-color" content="#c9a96e">
 <title>Max & Laura · 1. Juli 2026</title>
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
+/* ── Loading overlay ── */
+#loading{position:fixed;inset:0;background:#fff;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+#loading .sp{width:40px;height:40px;border:3px solid #f0e8d8;border-top-color:var(--gold,#c9a96e);border-radius:50%;animation:spin .8s linear infinite}
+#loading .lt{font-size:.85rem;color:#9ca3af;font-weight:600}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* ── Sync indicator ── */
+#sync-dot{width:8px;height:8px;border-radius:50%;background:#d1d5db;flex-shrink:0;transition:background .3s;margin-top:2px}
+#sync-dot.ok{background:#10b981}
+#sync-dot.busy{background:#f59e0b;animation:pulse .8s ease-in-out infinite}
+#sync-dot.err{background:#ef4444}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 :root {
   --gold:#c9a96e; --gold-d:#a07840; --gold-l:#fdf6e9;
   --max:#3b82f6; --max-l:#dbeafe;
@@ -30,6 +44,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 .hdr-title{font-size:.95rem;font-weight:800;letter-spacing:-.01em}
 .hdr-sub{font-size:.68rem;color:var(--muted);margin-top:2px}
 .cd-pill{background:var(--gold-l);color:#78460d;padding:5px 11px;border-radius:20px;font-size:.7rem;font-weight:800;white-space:nowrap;flex-shrink:0}
+.hdr-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
 
 /* ── Content ── */
 .content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
@@ -178,12 +193,21 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 <body>
 <div id="app">
 
+<!-- Loading screen -->
+<div id="loading">
+  <div class="sp"></div>
+  <div class="lt">Verbinde mit Hochzeits-App…</div>
+</div>
+
 <div class="hdr">
   <div class="hdr-main">
     <div class="hdr-title">💍 Max &amp; Laura</div>
     <div class="hdr-sub">Standesamt Dachau · 1. Juli 2026</div>
   </div>
-  <div class="cd-pill" id="cdpill">…</div>
+  <div class="hdr-right">
+    <div id="sync-dot" title="Sync-Status"></div>
+    <div class="cd-pill" id="cdpill">…</div>
+  </div>
 </div>
 
 <div class="content">
@@ -414,24 +438,47 @@ const DEFAULTS = {
 };
 
 // ═══════════════════════════════════════════════════════════
+// FIREBASE
+// ═══════════════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyC5QC5a0cCkfzoiV8xCckp9el0wbOwx_aI",
+  authDomain: "hochzeit-max-laura.firebaseapp.com",
+  databaseURL: "https://hochzeit-max-laura-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "hochzeit-max-laura",
+  storageBucket: "hochzeit-max-laura.firebasestorage.app",
+  messagingSenderId: "100988278625",
+  appId: "1:100988278625:web:871f83be164ac2cb005720"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const stateRef = db.ref('wedding_state');
+
+// ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
-let STATE = loadState();
+let STATE = JSON.parse(JSON.stringify(DEFAULTS));
 let currentTab = 'overview';
 let dayFilter = 'alle';
 let listenFilter = 'max';
-let editTarget = null; // {path, idx, field}
+let editTarget = null;
+let firstLoad = true;
 
-function loadState() {
-  try {
-    const s = localStorage.getItem('hochzeit_state_v2');
-    if (s) return JSON.parse(s);
-  } catch(e) {}
-  return JSON.parse(JSON.stringify(DEFAULTS));
+function setSyncDot(status) {
+  const d = document.getElementById('sync-dot');
+  if (!d) return;
+  d.className = status; // 'ok', 'busy', 'err'
 }
 
+// Save to Firebase (debounced 400ms)
+let saveTimer = null;
 function saveState() {
-  try { localStorage.setItem('hochzeit_state_v2', JSON.stringify(STATE)); } catch(e){}
+  setSyncDot('busy');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    stateRef.set(STATE)
+      .then(() => setSyncDot('ok'))
+      .catch(() => setSyncDot('err'));
+  }, 400);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -947,11 +994,39 @@ function getArr(path) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// INIT
+// INIT – Firebase real-time listener
 // ═══════════════════════════════════════════════════════════
 countdown();
 setInterval(countdown, 60000);
-renderOverview();
+
+stateRef.on('value', (snapshot) => {
+  const data = snapshot.val();
+  if (data) {
+    // Merge: keep any keys from DEFAULTS not yet in Firebase
+    STATE = data;
+  } else {
+    // First ever load – write defaults to Firebase
+    STATE = JSON.parse(JSON.stringify(DEFAULTS));
+    stateRef.set(STATE);
+  }
+
+  if (firstLoad) {
+    firstLoad = false;
+    document.getElementById('loading').style.display = 'none';
+    setSyncDot('ok');
+    renderOverview();
+  } else {
+    // Synced update from other device – re-render current view
+    setSyncDot('ok');
+    render(currentTab);
+  }
+}, (error) => {
+  console.error('Firebase error:', error);
+  setSyncDot('err');
+  // Fallback: use defaults and hide loading
+  document.getElementById('loading').style.display = 'none';
+  renderOverview();
+});
 </script>
 </body>
 </html>
