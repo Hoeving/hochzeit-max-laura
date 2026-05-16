@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Max & Laura 💍">
+<meta name="theme-color" content="#c9a96e">
+<title>Max & Laura · 1. Juli 2026</title>
+<style>
+:root {
+  --gold:#c9a96e; --gold-d:#a07840; --gold-l:#fdf6e9;
+  --max:#3b82f6; --max-l:#dbeafe;
+  --laura:#ec4899; --laura-l:#fce7f3;
+  --green:#10b981; --green-l:#d1fae5;
+  --red:#ef4444; --red-l:#fee2e2;
+  --bg:#f5f3ef; --card:#fff;
+  --txt:#1a1a1a; --muted:#6b7280; --border:rgba(0,0,0,.08);
+  --st: env(safe-area-inset-top,0px);
+  --sb: env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--txt)}
+#app{display:flex;flex-direction:column;height:100%;max-width:520px;margin:0 auto;position:relative}
+
+/* ── Header ── */
+.hdr{background:#fff;padding:calc(var(--st) + 10px) 16px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;box-shadow:0 1px 6px rgba(0,0,0,.06)}
+.hdr-main{flex:1}
+.hdr-title{font-size:.95rem;font-weight:800;letter-spacing:-.01em}
+.hdr-sub{font-size:.68rem;color:var(--muted);margin-top:2px}
+.cd-pill{background:var(--gold-l);color:#78460d;padding:5px 11px;border-radius:20px;font-size:.7rem;font-weight:800;white-space:nowrap;flex-shrink:0}
+
+/* ── Content ── */
+.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.section{display:none;padding:12px 12px 28px}
+.section.active{display:block}
+
+/* ── Bottom nav ── */
+.bnav{background:#fff;border-top:1px solid var(--border);padding:6px 0 calc(var(--sb) + 6px);display:flex;flex-shrink:0}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;cursor:pointer}
+.ni-ic{font-size:1.25rem;opacity:.4;transition:opacity .15s}
+.ni-lb{font-size:.58rem;font-weight:700;color:var(--muted);transition:color .15s}
+.ni.active .ni-ic{opacity:1}
+.ni.active .ni-lb{color:var(--gold)}
+
+/* ── Cards ── */
+.card{background:var(--card);border-radius:14px;overflow:hidden;border:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.05);margin-bottom:12px}
+.ch{padding:9px 14px;font-size:.67rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:6px}
+.ch-prog{margin-left:auto;font-size:.65rem;font-weight:700;opacity:.7}
+
+/* ── List items ── */
+.li{display:flex;align-items:flex-start;gap:9px;padding:10px 14px;border-bottom:1px solid rgba(0,0,0,.05);min-height:46px;position:relative}
+.li:last-child{border-bottom:none}
+.li-chk{width:22px;height:22px;border-radius:50%;border:2px solid #d1d5db;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all .2s;cursor:pointer}
+.li-chk.on{background:var(--green);border-color:var(--green)}
+.li-chk.on::after{content:'✓';color:#fff;font-size:.7rem;font-weight:800}
+.li-ico{font-size:.95rem;flex-shrink:0;margin-top:2px}
+.li-body{flex:1;min-width:0;cursor:pointer}
+.li-txt{font-size:.82rem;line-height:1.35;transition:opacity .2s}
+.li-txt.done{text-decoration:line-through;opacity:.4}
+.li-sub{font-size:.68rem;color:var(--muted);margin-top:2px;line-height:1.3}
+.badge{font-size:.58rem;padding:2px 7px;border-radius:8px;font-weight:800;white-space:nowrap;flex-shrink:0;align-self:center}
+.b-alert{background:var(--red-l);color:#991b1b}
+.b-date{background:#f3f4f6;color:#4b5563}
+.b-ok{background:var(--green-l);color:#065f46}
+.b-gold{background:var(--gold-l);color:#78460d}
+.li-edit{width:28px;height:28px;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;flex-shrink:0;align-self:center;font-size:.75rem;color:var(--muted);cursor:pointer;margin-left:2px}
+.li-edit:active{background:#e5e7eb}
+
+/* ── Timeline ── */
+.tl-wrap{padding:0 14px}
+.tle{display:flex;gap:0;position:relative}
+.tle-time{width:52px;flex-shrink:0;font-size:.68rem;font-weight:700;color:var(--muted);padding-top:13px;text-align:right;padding-right:8px}
+.tle-line{width:22px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;position:relative}
+.tle-dot{width:11px;height:11px;border-radius:50%;background:var(--gold);margin-top:14px;flex-shrink:0;z-index:1;transition:background .2s}
+.tle-dot.on{background:var(--green)}
+.tle-seg{position:absolute;top:25px;bottom:-6px;width:2px;background:#e5e7eb;left:calc(50% - 1px)}
+.tle:last-child .tle-seg{display:none}
+.tle-body{flex:1;padding:8px 0 14px 8px;border-bottom:1px solid rgba(0,0,0,.05);cursor:pointer}
+.tle:last-child .tle-body{border-bottom:none}
+.tle-chk{width:22px;height:22px;border-radius:50%;border:2px solid #d1d5db;flex-shrink:0;margin-top:12px;display:flex;align-items:center;justify-content:center;transition:all .2s;cursor:pointer;flex-shrink:0}
+.tle-chk.on{background:var(--green);border-color:var(--green)}
+.tle-chk.on::after{content:'✓';color:#fff;font-size:.7rem;font-weight:800}
+.tle-title{font-size:.82rem;font-weight:600;line-height:1.3}
+.tle-title.done{text-decoration:line-through;opacity:.4}
+.tle-sub{font-size:.68rem;color:var(--muted);margin-top:3px;line-height:1.3}
+.tle-tag{display:inline-block;font-size:.6rem;padding:2px 7px;border-radius:8px;font-weight:800;margin-top:4px}
+
+/* ── Filter pills ── */
+.fpills{display:flex;gap:7px;padding:0 0 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.fpills::-webkit-scrollbar{display:none}
+.fp{padding:7px 15px;border-radius:20px;font-size:.73rem;font-weight:700;white-space:nowrap;cursor:pointer;background:#fff;border:2px solid #e5e7eb;color:var(--muted);transition:all .15s;flex-shrink:0}
+.fp.act{background:var(--gold);border-color:var(--gold);color:#fff}
+.fp.act-max{background:var(--max);border-color:var(--max);color:#fff}
+.fp.act-laura{background:var(--laura);border-color:var(--laura);color:#fff}
+
+/* ── Person cards ── */
+.pcard{margin-bottom:12px;border-radius:14px;overflow:hidden;border:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.pchead{padding:12px 14px;display:flex;align-items:center;gap:10px;cursor:pointer}
+.pcav{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.pcname{font-size:.88rem;font-weight:800;color:#fff}
+.pcrole{font-size:.65rem;color:rgba(255,255,255,.78);margin-top:1px}
+.pcprog{margin-left:auto;font-size:.68rem;color:rgba(255,255,255,.85);font-weight:700}
+.pcarrow{font-size:.75rem;color:rgba(255,255,255,.7);margin-left:4px;transition:transform .2s}
+.pcarrow.open{transform:rotate(180deg)}
+.pcbody{background:#fff;display:none}
+.pcbody.open{display:block}
+.pclabel{font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding:8px 14px 3px}
+
+/* ── Seating ── */
+.seatgrid{display:grid;grid-template-columns:1fr 28px 1fr;gap:6px;align-items:start}
+.seatcol{display:flex;flex-direction:column;gap:5px}
+.seatdiv{display:flex;flex-direction:column;align-items:center;gap:4px}
+.seatline{width:2px;flex:1;background:#e5e7eb;min-height:20px}
+.seatico{font-size:1rem}
+.seat{background:#fff;border:1px solid var(--border);border-radius:10px;padding:7px 8px;text-align:center;cursor:pointer}
+.seat:active{background:#f9f9f9}
+.sname{font-size:.78rem;font-weight:700}
+.snote{font-size:.6rem;color:var(--muted);margin-top:2px}
+
+/* ── Overview ── */
+.ov-banner{background:linear-gradient(135deg,#c9a96e,#96652a);color:#fff;padding:18px 16px;border-radius:14px;margin-bottom:12px;text-align:center}
+.ov-days{font-size:2.8rem;font-weight:900;line-height:1}
+.ov-dlabel{font-size:.72rem;opacity:.85;margin-top:3px}
+.ov-date{font-size:.78rem;font-weight:600;margin-top:10px;opacity:.9;border-top:1px solid rgba(255,255,255,.25);padding-top:10px}
+.ov2grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.ovc{background:#fff;border:1px solid var(--border);border-radius:14px;padding:13px 12px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.ovc.fw{grid-column:1/-1}
+.ovc-ic{font-size:1.4rem;margin-bottom:6px}
+.ovc-title{font-size:.75rem;font-weight:800;margin-bottom:3px}
+.ovc-val{font-size:.68rem;color:var(--muted)}
+.prog-bar{height:5px;background:#e5e7eb;border-radius:3px;margin-top:7px;overflow:hidden}
+.prog-fill{height:100%;background:var(--gold);border-radius:3px;transition:width .4s}
+.prog-fill.g{background:var(--green)}
+
+/* ── Music items ── */
+.music-row{padding:10px 14px;border-bottom:1px solid rgba(0,0,0,.05)}
+.music-row:last-child{border-bottom:none}
+.music-mom{font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:3px}
+.music-song{font-size:.83rem;font-weight:700}
+.music-art{font-size:.7rem;color:var(--muted);margin-top:2px}
+
+/* ── Info rows ── */
+.irow{display:flex;gap:10px;align-items:flex-start;padding:9px 14px;border-bottom:1px solid rgba(0,0,0,.05)}
+.irow:last-child{border-bottom:none}
+.iico{font-size:.95rem;flex-shrink:0;margin-top:1px}
+.ilabel{font-size:.65rem;color:var(--muted)}
+.ival{font-size:.8rem;font-weight:600;margin-top:1px}
+
+/* ── Sublabel ── */
+.slabel{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding:10px 14px 3px}
+
+/* ── Modal ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .2s}
+.overlay.open{opacity:1;pointer-events:all}
+.sheet{background:#fff;border-radius:20px 20px 0 0;width:100%;padding:14px 16px calc(var(--sb) + 16px);transform:translateY(100%);transition:transform .28s cubic-bezier(.32,.72,0,1)}
+.overlay.open .sheet{transform:translateY(0)}
+.m-handle{width:38px;height:4px;background:#d1d5db;border-radius:2px;margin:0 auto 14px}
+.m-title{font-size:.85rem;font-weight:800;margin-bottom:12px}
+.m-input{width:100%;border:1.5px solid #e5e7eb;border-radius:11px;padding:10px 12px;font-size:.88rem;font-family:inherit;outline:none;margin-bottom:8px;color:var(--txt)}
+.m-input:focus{border-color:var(--gold)}
+.m-sub{font-size:.78rem;color:var(--muted)}
+.m-actions{display:flex;gap:8px;margin-top:12px}
+.btn{flex:1;padding:13px;border-radius:12px;font-size:.85rem;font-weight:700;border:none;cursor:pointer;font-family:inherit}
+.btn-c{background:#f3f4f6;color:var(--muted)}
+.btn-s{background:var(--gold);color:#fff}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:calc(var(--sb) + 72px);left:50%;transform:translateX(-50%) translateY(16px);background:#1a1a1a;color:#fff;padding:8px 16px;border-radius:20px;font-size:.75rem;font-weight:700;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;z-index:200}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── Phase header ── */
+.phase-hdr{font-size:.63rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding:12px 14px 4px;display:flex;justify-content:space-between;align-items:center}
+.phase-prog{font-weight:700;color:var(--gold)}
+</style>
+</head>
+<body>
+<div id="app">
+
+<div class="hdr">
+  <div class="hdr-main">
+    <div class="hdr-title">💍 Max &amp; Laura</div>
+    <div class="hdr-sub">Standesamt Dachau · 1. Juli 2026</div>
+  </div>
+  <div class="cd-pill" id="cdpill">…</div>
+</div>
+
+<div class="content">
+  <div class="section active" id="s-overview"></div>
+  <div class="section" id="s-zeitplan"></div>
+  <div class="section" id="s-tag"></div>
+  <div class="section" id="s-aufgaben"></div>
+  <div class="section" id="s-listen"></div>
+</div>
+
+<div class="bnav">
+  <div class="ni active" data-tab="overview" onclick="nav('overview')"><span class="ni-ic">🏠</span><span class="ni-lb">Übersicht</span></div>
+  <div class="ni" data-tab="zeitplan" onclick="nav('zeitplan')"><span class="ni-ic">📅</span><span class="ni-lb">Zeitplan</span></div>
+  <div class="ni" data-tab="tag" onclick="nav('tag')"><span class="ni-ic">💍</span><span class="ni-lb">Hochzeitstag</span></div>
+  <div class="ni" data-tab="aufgaben" onclick="nav('aufgaben')"><span class="ni-ic">🎯</span><span class="ni-lb">Aufgaben</span></div>
+  <div class="ni" data-tab="listen" onclick="nav('listen')"><span class="ni-ic">🧳</span><span class="ni-lb">Listen</span></div>
+</div>
+
+</div><!-- #app -->
+
+<!-- Edit Modal -->
+<div class="overlay" id="edit-overlay">
+  <div class="sheet">
+    <div class="m-handle"></div>
+    <div class="m-title">✏️ Eintrag bearbeiten</div>
+    <input class="m-input" id="ei-text" placeholder="Text…">
+    <input class="m-input m-sub" id="ei-sub" placeholder="Zusatzinfo (optional)…">
+    <div class="m-actions">
+      <button class="btn btn-c" onclick="closeModal()">Abbrechen</button>
+      <button class="btn btn-s" onclick="saveEdit()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// DEFAULT DATA
+// ═══════════════════════════════════════════════════════════
+const DEFAULTS = {
+  prep: [
+    // Mitte Mai
+    {id:'p1',phase:'Mitte Mai',icon:'🏠',text:'Wohnungszugang Dr.-Engert-Str. 1 klären',sub:'Mit Eltern der Braut (Bräutigam zieht sich dort um)',done:false},
+    {id:'p2',phase:'Mitte Mai',icon:'📞',text:'Laura Bankavs kontaktieren',sub:'Schlosscafé: Reservierung ~12:15 + Tischanordnung besprechen',done:false},
+    {id:'p3',phase:'Mitte Mai',icon:'📄',text:'Broschüre Schlosscafé holen',sub:'Wird für Tortenbestellung benötigt',done:false},
+    {id:'p4',phase:'Mitte Mai',icon:'👗',text:'Back-up Outfit Braut besorgen',sub:'Deadline: spätestens 10. Juni',done:false},
+    // Ende Mai
+    {id:'p5',phase:'Ende Mai',icon:'🎂',text:'Hochzeitstorte bestellen',sub:'Nachdem die Broschüre vom Schlosscafé vorliegt',done:false},
+    // 3. Juni
+    {id:'p6',phase:'3. Juni',icon:'🏛️',text:'Vorbesprechung Oberbürgermeister · 14:00 Uhr',sub:'Standesamt Dachau – Finale Details + Trauungsgebühr klären/zahlen',done:false},
+    // 5. Juni
+    {id:'p7',phase:'5. Juni',icon:'💄',text:'Probestyling · 9:30 Uhr',sub:'Augsburger Str. 17, Dachau – Make-up & Haare testen, Uhrzeit 1. Juli festlegen',done:false},
+    {id:'p8',phase:'5. Juni',icon:'📸',text:'Simone: Fotos beim Probestyling machen',sub:'',done:false},
+    // bis Mitte Juni
+    {id:'p9',phase:'bis Mitte Juni',icon:'🧣',text:'Weißen Schal kaufen',sub:'Nach Rücksprache Stylistin (nach 5. Juni)',done:false},
+    {id:'p10',phase:'bis Mitte Juni',icon:'💐',text:'Haarschmuck kaufen',sub:'Nach Rücksprache Stylistin (nach 5. Juni)',done:false},
+    {id:'p11',phase:'bis Mitte Juni',icon:'💄',text:'Make-up Produkte nachkaufen',sub:'Was die Stylistin empfiehlt',done:false},
+    {id:'p12',phase:'bis Mitte Juni',icon:'👞',text:'Schuhe Bräutigam kaufen',sub:'',done:false},
+    {id:'p13',phase:'bis Mitte Juni',icon:'👔',text:'Backup-Shirt Bräutigam kaufen',sub:'',done:false},
+    // ~17. Juni
+    {id:'p14',phase:'~17. Juni',icon:'📋',text:'Menüvorschlag ans Schlosscafé einreichen',sub:'2 Wochen vor der Hochzeit',done:false},
+    {id:'p15',phase:'~17. Juni',icon:'👶',text:'Giulia: Kinderessen mit Restaurant klären',sub:'',done:false},
+    {id:'p16',phase:'~17. Juni',icon:'🥜',text:'Nussallergie Tanja ans Restaurant melden',sub:'',done:false},
+    // ~24. Juni
+    {id:'p17',phase:'~24. Juni',icon:'📝',text:'Trauzeugen anmelden (Standesamt-Dokument)',sub:'Johannes + Simone füllen das Dokument aus',done:false},
+    {id:'p18',phase:'~24. Juni',icon:'✂️',text:'Friseur-Termin Bräutigam',sub:'',done:false},
+    {id:'p19',phase:'~24. Juni',icon:'📱',text:'WhatsApp-Gruppe erstellen',sub:'Ablauf + Gästeinfos teilen: Parken (Parkgarage Altstadt), Treffpunkt 10:30 Rathausplatz, Seifenblasen OK',done:false},
+    {id:'p20',phase:'~24. Juni',icon:'🌸',text:'Doublecheck Tischdeko',sub:'',done:false},
+    {id:'p21',phase:'~24. Juni',icon:'🪧',text:'Namenskärtchen fertigstellen',sub:'',done:false},
+    {id:'p22',phase:'~24. Juni',icon:'🌡️',text:'Wetter prüfen → ggfs. Fächer bestellen',sub:'Bei Hitze',done:false},
+    {id:'p23',phase:'~24. Juni',icon:'📌',text:'Simone: Pinterest-Fotos für Shooting sammeln',sub:'Auf Handy für den Hochzeitstag bereithalten',done:false},
+    {id:'p24',phase:'~24. Juni',icon:'🎵',text:'Chiara: Playlist laden + Bluetooth-Box testen',sub:'Lautstärke für Rathausplatz prüfen!',done:false},
+    {id:'p25',phase:'~24. Juni',icon:'👗',text:'Hochzeitskleid abholen · 16:00 Uhr',sub:'Beim Schneider – letzte Anprobe',done:false},
+  ],
+
+  day: [
+    {id:'d1',time:'~07:30',icon:'🚗',txt:'Abfahrt Candidplatz',sub:'Richtung Dachau (~40 Min.)',who:['max','laura'],done:false},
+    {id:'d2',time:'~08:00',icon:'💄',txt:'Styling beginnt',sub:'Augsburger Str. 17 – Make-up & Haare · Niels macht Fotos',who:['laura'],done:false},
+    {id:'d3',time:'~10:00',icon:'🌹',txt:'Brautstrauß + Anstecker abholen',sub:'Frank Blumen, Bahnhofstr. 15a, Dachau',who:['max'],done:false},
+    {id:'d4',time:'~10:10',icon:'👔',txt:'Umziehen bei Dr.-Engert-Str. 1',sub:'Wohnung Eltern der Braut (Zugang vorher klären!)',who:['max'],done:false},
+    {id:'d5',time:'~10:20',icon:'👗',txt:'Hochzeitskleid anziehen + letzter Check',sub:'Schmuck ✓ · Schal ✓ · Haarschmuck ✓ · Ausweis ✓',who:['laura'],done:false},
+    {id:'d6',time:'~10:30',icon:'🚶',txt:'Zu Fuß zum Rathausplatz',sub:'Von Augsburger Str. 17 (~5–10 Min.)',who:['laura'],done:false},
+    {id:'d7',time:'10:30',icon:'📍',txt:'Treffpunkt Rathausplatz',sub:'Alle Gäste + Fotografin Nikki (0178 2366766)',who:['max','laura'],done:false},
+    {id:'d8',time:'10:30',icon:'💍',txt:'Ringe an Kai / Melissa / Giulia übergeben',sub:'Bräutigam übergibt die Eheringe',who:['max'],done:false},
+    {id:'d9',time:'~10:40',icon:'👰',txt:'Laura kommt am Rathausplatz an',sub:'',who:['laura'],done:false},
+    {id:'d10',time:'10:50',icon:'🏛️',txt:'Meldung beim Standesamt',sub:'Ausweise bereit halten!',who:['max','laura'],done:false},
+    {id:'d11',time:'11:00',icon:'💍',txt:'Trauung beginnt',sub:'Standesamt Dachau · ca. 30 Minuten',who:['max','laura'],done:false},
+    {id:'d12',time:'~11:30',icon:'🥂',txt:'Trauung endet',sub:'Gratulationen + Gruppenfoto Rathausplatz (~15 Min.)',who:['max','laura'],done:false},
+    {id:'d13',time:'~12:00',icon:'🏰',txt:'Aufstieg zum Schloss',sub:'~10 Min. · gemütlich wegen hoher Schuhe & Omas',who:['max','laura'],done:false},
+    {id:'d14',time:'~12:10',icon:'📸',txt:'Gruppenfotos Schlossgarten',sub:'~30 Min. · verschiedene Konstellationen',who:['max','laura'],done:false},
+    {id:'d15',time:'~12:40',icon:'📷',txt:'Brautpaar-Shooting',sub:'~30 Min. mit Nikki · Simone hält den Strauß · Gäste im Schlosscafé',who:['max','laura'],done:false},
+    {id:'d16',time:'~13:10',icon:'🍽️',txt:'Essen im Schlosscafé',sub:'Gemeinsam mit allen Gästen',who:['max','laura'],done:false},
+    {id:'d17',time:'danach',icon:'🎂',txt:'Kaffee & Hochzeitstorte',sub:'Gemütlicher Ausklang 🥂',who:['max','laura'],done:false},
+  ],
+
+  resp: [
+    {person:'Max',role:'Bräutigam',icon:'🤵',color:'#3b82f6',
+     tasks:[
+       {id:'rm1',phase:'Vorher',icon:'👞',text:'Schuhe kaufen',when:'bis Mitte Juni',done:false},
+       {id:'rm2',phase:'Vorher',icon:'👔',text:'Backup-Shirt kaufen',when:'bis Mitte Juni',done:false},
+       {id:'rm3',phase:'Vorher',icon:'✂️',text:'Friseur-Termin buchen',when:'~24. Juni',done:false},
+       {id:'rm4',phase:'Hochzeitstag',icon:'🌹',text:'Brautstrauß + Anstecker abholen',when:'~10:00 Frank Blumen',done:false},
+       {id:'rm5',phase:'Hochzeitstag',icon:'💍',text:'Ringe mitnehmen & übergeben',when:'10:30 Rathausplatz',done:false},
+       {id:'rm6',phase:'Hochzeitstag',icon:'🪪',text:'Ausweis mitnehmen',when:'Standesamt',done:false},
+     ]},
+    {person:'Laura',role:'Braut',icon:'👰',color:'#ec4899',
+     tasks:[
+       {id:'rl1',phase:'Vorher',icon:'👗',text:'Back-up Outfit besorgen',when:'bis 10. Juni',done:false},
+       {id:'rl2',phase:'Vorher',icon:'💄',text:'Probestyling',when:'5. Juni 9:30',done:false},
+       {id:'rl3',phase:'Vorher',icon:'🧣',text:'Schal + Haarschmuck kaufen',when:'nach 5. Juni',done:false},
+       {id:'rl4',phase:'Vorher',icon:'💄',text:'Make-up Produkte nachkaufen',when:'nach 5. Juni',done:false},
+       {id:'rl5',phase:'Vorher',icon:'👗',text:'Hochzeitskleid abholen',when:'24. Juni 16:00',done:false},
+       {id:'rl6',phase:'Hochzeitstag',icon:'🪪',text:'Ausweis mitnehmen',when:'Standesamt',done:false},
+     ]},
+    {person:'Johannes',role:'Trauzeuge',icon:'🧑',color:'#8b5cf6',
+     tasks:[
+       {id:'rj1',phase:'Vorher',icon:'📝',text:'Trauzeugendokument ausfüllen',when:'~24. Juni',done:false},
+       {id:'rj2',phase:'Hochzeitstag',icon:'📸',text:'Fotografin Nikki empfangen',when:'10:30 Rathausplatz',done:false},
+       {id:'rj3',phase:'Hochzeitstag',icon:'🤝',text:'Gäste der Fotografin vorstellen',when:'',done:false},
+       {id:'rj4',phase:'Hochzeitstag',icon:'🍷',text:'Restaurant managen während Shooting',when:'~12:40',done:false},
+       {id:'rj5',phase:'Hochzeitstag',icon:'🪪',text:'Ausweis mitnehmen',when:'Standesamt',done:false},
+     ]},
+    {person:'Simone',role:'Trauzeugin · Shooting-Support',icon:'📸',color:'#10b981',
+     tasks:[
+       {id:'rs1',phase:'Vorher',icon:'📸',text:'Fotos beim Probestyling machen',when:'5. Juni',done:false},
+       {id:'rs2',phase:'Vorher',icon:'📝',text:'Trauzeugendokument ausfüllen',when:'~24. Juni',done:false},
+       {id:'rs3',phase:'Vorher',icon:'📌',text:'Pinterest-Fotos für Shooting sammeln',when:'~24. Juni',done:false},
+       {id:'rs4',phase:'Hochzeitstag',icon:'🪪',text:'Ausweis mitnehmen',when:'Standesamt',done:false},
+       {id:'rs5',phase:'Hochzeitstag',icon:'📱',text:'Pinterest-Fotos auf Handy bereithalten',when:'Shooting',done:false},
+       {id:'rs6',phase:'Hochzeitstag',icon:'🌹',text:'Brautstrauß beim Shooting halten',when:'Schlossgarten',done:false},
+     ]},
+    {person:'Chiara',role:'Musik & Tasche',icon:'🎵',color:'#f59e0b',
+     tasks:[
+       {id:'rc1',phase:'Vorher',icon:'🎵',text:'Playlist laden + Bluetooth-Box testen',when:'~24. Juni (Lautstärke!)',done:false},
+       {id:'rc2',phase:'Hochzeitstag',icon:'▶️',text:'Trauungsmusik abspielen',when:'Einzug · Unterschrift · Auszug',done:false},
+       {id:'rc3',phase:'Hochzeitstag',icon:'👜',text:'Tasche für Bräutigam mitbringen',when:'mit Antje',done:false},
+     ]},
+    {person:'Niels',role:'Foto-Dokumentation',icon:'📷',color:'#0ea5e9',
+     tasks:[
+       {id:'rn1',phase:'Hochzeitstag',icon:'📷',text:'Fotos beim Styling machen',when:'~08:00 Augsburger Str. 17',done:false},
+     ]},
+    {person:'Antje',role:'Tasche',icon:'👜',color:'#f472b6',
+     tasks:[
+       {id:'ra1',phase:'Hochzeitstag',icon:'👜',text:'Tasche für Bräutigam mitbringen',when:'Rathausplatz (mit Chiara)',done:false},
+     ]},
+    {person:'Kai · Melissa · Giulia',role:'Ring-Keeper',icon:'💍',color:'#6366f1',
+     tasks:[
+       {id:'rk1',phase:'Hochzeitstag',icon:'💍',text:'Ringe vom Bräutigam entgegennehmen',when:'10:30 Rathausplatz',done:false},
+     ]},
+    {person:'Tanja',role:'Eheurkunde',icon:'📄',color:'#ef4444',
+     tasks:[
+       {id:'rt1',phase:'Nach der Hochzeit',icon:'📄',text:'Eheurkunde ins Büro bringen & aufbewahren',when:'nach 1. Juli',done:false},
+     ]},
+  ],
+
+  packMax: {
+    buy:[
+      {id:'pmb1',icon:'👞',text:'Schuhe kaufen',sub:'bis Mitte Juni',done:false},
+      {id:'pmb2',icon:'👔',text:'Backup-Shirt kaufen',sub:'bis Mitte Juni',done:false},
+      {id:'pmb3',icon:'✂️',text:'Friseur-Termin buchen',sub:'Termin ca. 24. Juni',done:false},
+    ],
+    pack:[
+      {id:'pmp1',icon:'🪪',text:'Ausweis',sub:'Pflicht!',alert:true,done:false},
+      {id:'pmp2',icon:'💍',text:'Eheringe',sub:'→ 10:30 Rathausplatz an Kai/Melissa/Giulia',alert:true,done:false},
+      {id:'pmp3',icon:'👔',text:'Hochzeitsanzug',sub:'bereits vorhanden ✓',done:false},
+      {id:'pmp4',icon:'👞',text:'Schuhe',sub:'erst kaufen!',done:false},
+      {id:'pmp5',icon:'👔',text:'Backup-Shirt',sub:'erst kaufen',done:false},
+      {id:'pmp6',icon:'🕶️',text:'Sonnenbrille',sub:'vorhanden ✓',done:false},
+    ],
+    morning:[
+      {id:'pmm1',icon:'🌹',text:'Brautstrauß + Anstecker abholen',sub:'Frank Blumen, Bahnhofstr. 15a · ~10:00 Uhr',done:false},
+      {id:'pmm2',icon:'🏠',text:'Umziehen bei Dr.-Engert-Str. 1',sub:'Wohnung Eltern der Braut (Zugang vorher klären!)',done:false},
+    ]
+  },
+
+  packLaura: {
+    buy:[
+      {id:'plb1',icon:'👗',text:'Back-up Outfit besorgen',sub:'Deadline: spätestens 10. Juni',done:false},
+      {id:'plb2',icon:'🧣',text:'Weißen Schal kaufen',sub:'nach Probestyling (5. Juni)',done:false},
+      {id:'plb3',icon:'💐',text:'Haarschmuck kaufen',sub:'nach Probestyling (5. Juni)',done:false},
+      {id:'plb4',icon:'💄',text:'Make-up Produkte nachkaufen',sub:'nach Probestyling (5. Juni)',done:false},
+      {id:'plb5',icon:'👗',text:'Hochzeitskleid abholen',sub:'24. Juni, 16:00 Uhr beim Schneider',done:false},
+    ],
+    pack:[
+      {id:'plp1',icon:'🪪',text:'Ausweis',sub:'Pflicht!',alert:true,done:false},
+      {id:'plp2',icon:'👗',text:'Hochzeitskleid',sub:'am 24. Juni abholen',done:false},
+      {id:'plp3',icon:'👠',text:'Brautschuhe – hoch',sub:'vorhanden ✓',done:false},
+      {id:'plp4',icon:'🥿',text:'Brautschuhe – flach',sub:'vorhanden ✓ · für später am Tag',done:false},
+      {id:'plp5',icon:'👗',text:'Back-up Outfit',sub:'erst kaufen',done:false},
+      {id:'plp6',icon:'🧣',text:'Weißer Schal',sub:'erst kaufen',done:false},
+      {id:'plp7',icon:'💐',text:'Haarschmuck',sub:'erst kaufen',done:false},
+      {id:'plp8',icon:'🩱',text:'Unterwäsche',sub:'vorhanden ✓',done:false},
+      {id:'plp9',icon:'💎',text:'Schmuck',sub:'vorhanden – bitte nicht vergessen!',alert:true,done:false},
+      {id:'plp10',icon:'🕶️',text:'Sonnenbrille',sub:'vorhanden ✓',done:false},
+      {id:'plp11',icon:'💄',text:'Make-up Täschchen',sub:'für Nachbesserungen zwischendurch',done:false},
+    ]
+  },
+
+  seating:{
+    left:[
+      {id:'sl1',name:'Laura',note:'Braut 👰',color:'#ec4899'},
+      {id:'sl2',name:'Simone',note:'Trauzeugin',color:'#10b981'},
+      {id:'sl3',name:'Melissa',note:'',color:''},
+      {id:'sl4',name:'Giulia',note:'Kleinkind 👶',color:''},
+      {id:'sl5',name:'Kai',note:'',color:''},
+      {id:'sl6',name:'Tanja',note:'🥜 Nussallergie',color:'#ef4444'},
+      {id:'sl7',name:'Niels',note:'',color:''},
+      {id:'sl8',name:'Florian',note:'',color:''},
+    ],
+    right:[
+      {id:'sr1',name:'Max',note:'Bräutigam 🤵',color:'#3b82f6'},
+      {id:'sr2',name:'Johannes',note:'Trauzeuge',color:'#8b5cf6'},
+      {id:'sr3',name:'Chiara',note:'🎵 Musik',color:'#f59e0b'},
+      {id:'sr4',name:'Benni',note:'',color:''},
+      {id:'sr5',name:'Michael',note:'',color:''},
+      {id:'sr6',name:'Antje',note:'',color:''},
+      {id:'sr7',name:'Doris',note:'',color:''},
+      {id:'sr8',name:'Toni',note:'',color:''},
+    ]
+  },
+
+  music:[
+    {moment:'Einzug',icon:'🚶',song:'Bella Napoli',artist:'Piano Cover · Tomiano'},
+    {moment:'Unterschrift',icon:'✍️',song:'Sarà perché ti amo',artist:'Piano Version · Tomiano'},
+    {moment:'Auszug',icon:'🎉',song:'Here Comes the Sun',artist:'Piano Instrumental · Box of Music'},
+  ]
+};
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let STATE = loadState();
+let currentTab = 'overview';
+let dayFilter = 'alle';
+let listenFilter = 'max';
+let editTarget = null; // {path, idx, field}
+
+function loadState() {
+  try {
+    const s = localStorage.getItem('hochzeit_state_v2');
+    if (s) return JSON.parse(s);
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(DEFAULTS));
+}
+
+function saveState() {
+  try { localStorage.setItem('hochzeit_state_v2', JSON.stringify(STATE)); } catch(e){}
+}
+
+// ═══════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════
+function countdown() {
+  const now = new Date();
+  const wed = new Date('2026-07-01');
+  const diff = Math.ceil((wed - now) / 86400000);
+  const el = document.getElementById('cdpill');
+  if (!el) return;
+  if (diff > 0) el.textContent = `noch ${diff} Tage`;
+  else if (diff === 0) el.textContent = '🎉 Heute!';
+  else el.textContent = '💍 Vermählt!';
+  return diff;
+}
+
+function e(id) { return document.getElementById(id); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function toast(msg) {
+  const t = e('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2000);
+}
+
+function progText(items) {
+  const done = items.filter(x=>x.done).length;
+  return `${done}/${items.length}`;
+}
+
+function progPct(items) {
+  if (!items.length) return 0;
+  return Math.round(items.filter(x=>x.done).length / items.length * 100);
+}
+
+// ═══════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════
+function nav(tab) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+  e('s-'+tab).classList.add('active');
+  document.querySelector(`.ni[data-tab="${tab}"]`).classList.add('active');
+  currentTab = tab;
+  render(tab);
+}
+
+function render(tab) {
+  if (tab==='overview') renderOverview();
+  else if (tab==='zeitplan') renderZeitplan();
+  else if (tab==='tag') renderTag();
+  else if (tab==='aufgaben') renderAufgaben();
+  else if (tab==='listen') renderListen();
+}
+
+// ═══════════════════════════════════════════════════════════
+// TOGGLE & EDIT
+// ═══════════════════════════════════════════════════════════
+function toggleItem(path, idx) {
+  const item = getItem(path, idx);
+  if (!item) return;
+  item.done = !item.done;
+  saveState();
+  render(currentTab);
+  toast(item.done ? '✓ Erledigt!' : 'Wieder offen');
+}
+
+function getItem(path, idx) {
+  const parts = path.split('.');
+  let obj = STATE;
+  for (const p of parts) {
+    if (obj === undefined) return null;
+    obj = Array.isArray(obj) ? obj : obj[p];
+    if (!Array.isArray(obj)) {
+      // navigate into object key
+      const parent = STATE;
+      let cur = STATE;
+      for (const pp of parts) {
+        if (cur[pp] !== undefined) cur = cur[pp]; else break;
+      }
+      obj = cur;
+      break;
+    }
+  }
+  // Re-navigate cleanly
+  let cur = STATE;
+  for (let i=0; i<parts.length; i++) {
+    if (cur[parts[i]] !== undefined) cur = cur[parts[i]];
+  }
+  if (Array.isArray(cur)) return cur[idx];
+  return null;
+}
+
+function getArr(path) {
+  const parts = path.split('.');
+  let cur = STATE;
+  for (const p of parts) { cur = cur[p]; }
+  return cur;
+}
+
+function toggleArr(path, idx) {
+  const arr = getArr(path);
+  arr[idx].done = !arr[idx].done;
+  saveState();
+  render(currentTab);
+  toast(arr[idx].done ? '✓ Erledigt!' : 'Wieder offen');
+}
+
+function openEdit(path, idx, field2) {
+  const arr = getArr(path);
+  const item = arr[idx];
+  editTarget = {path, idx};
+  e('ei-text').value = item.text || item.txt || item.name || '';
+  e('ei-sub').value = item.sub || item.note || '';
+  e('edit-overlay').classList.add('open');
+  setTimeout(()=>e('ei-text').focus(), 300);
+}
+
+function openEditResp(pi, ti) {
+  const task = STATE.resp[pi].tasks[ti];
+  editTarget = {path:'resp', pi, ti};
+  e('ei-text').value = task.text;
+  e('ei-sub').value = task.when || '';
+  e('edit-overlay').classList.add('open');
+  setTimeout(()=>e('ei-text').focus(), 300);
+}
+
+function openEditSeat(side, idx) {
+  const item = STATE.seating[side][idx];
+  editTarget = {path:'seating', side, idx};
+  e('ei-text').value = item.name;
+  e('ei-sub').value = item.note || '';
+  e('edit-overlay').classList.add('open');
+  setTimeout(()=>e('ei-text').focus(), 300);
+}
+
+function saveEdit() {
+  if (!editTarget) return;
+  const txt = e('ei-text').value.trim();
+  const sub = e('ei-sub').value.trim();
+  if (!txt) { closeModal(); return; }
+
+  if (editTarget.path === 'resp') {
+    STATE.resp[editTarget.pi].tasks[editTarget.ti].text = txt;
+    STATE.resp[editTarget.pi].tasks[editTarget.ti].when = sub;
+  } else if (editTarget.path === 'seating') {
+    STATE.seating[editTarget.side][editTarget.idx].name = txt;
+    STATE.seating[editTarget.side][editTarget.idx].note = sub;
+  } else {
+    const arr = getArr(editTarget.path);
+    const item = arr[editTarget.idx];
+    if ('text' in item) item.text = txt;
+    if ('txt' in item) item.txt = txt;
+    if ('name' in item) item.name = txt;
+    if ('sub' in item) item.sub = sub;
+    if ('note' in item) item.note = sub;
+  }
+
+  saveState();
+  closeModal();
+  render(currentTab);
+  toast('✓ Gespeichert');
+}
+
+function closeModal() {
+  e('edit-overlay').classList.remove('open');
+  editTarget = null;
+}
+
+e('edit-overlay').addEventListener('click', function(ev) {
+  if (ev.target === this) closeModal();
+});
+
+function toggleResp(pi, ti) {
+  STATE.resp[pi].tasks[ti].done = !STATE.resp[pi].tasks[ti].done;
+  saveState();
+  render(currentTab);
+  toast(STATE.resp[pi].tasks[ti].done ? '✓ Erledigt!' : 'Wieder offen');
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER: OVERVIEW
+// ═══════════════════════════════════════════════════════════
+function renderOverview() {
+  const diff = countdown();
+  const prepDone = STATE.prep.filter(x=>x.done).length;
+  const prepTotal = STATE.prep.length;
+  const dayDone = STATE.day.filter(x=>x.done).length;
+  const dayTotal = STATE.day.length;
+  const respTasks = STATE.resp.flatMap(r=>r.tasks);
+  const respDone = respTasks.filter(x=>x.done).length;
+
+  // Phase-grouped prep progress
+  const phases = [...new Set(STATE.prep.map(p=>p.phase))];
+  const phaseCards = phases.map(ph => {
+    const items = STATE.prep.filter(x=>x.phase===ph);
+    const done = items.filter(x=>x.done).length;
+    const pct = Math.round(done/items.length*100);
+    const allDone = done === items.length;
+    return `<div class="ovc">
+      <div class="ovc-ic">${ph.includes('Juli') ? '💍' : ph.includes('Juni') ? '🗓️' : ph.includes('Mai') ? '🌸' : '📋'}</div>
+      <div class="ovc-title">${esc(ph)}</div>
+      <div class="ovc-val">${done} / ${items.length} erledigt</div>
+      <div class="prog-bar"><div class="prog-fill ${allDone?'g':''}" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+
+  e('s-overview').innerHTML = `
+    <div class="ov-banner">
+      <div class="ov-days">${diff > 0 ? diff : diff === 0 ? '🎉' : '💍'}</div>
+      <div class="ov-dlabel">${diff > 0 ? 'Tage bis zur Hochzeit' : diff === 0 ? 'Heute ist der große Tag!' : 'Herzlichen Glückwunsch!'}</div>
+      <div class="ov-date">Mittwoch, 1. Juli 2026 · Standesamt Dachau · 11:00 Uhr</div>
+    </div>
+
+    <div class="ov2grid" style="margin-bottom:12px">
+      <div class="ovc">
+        <div class="ovc-ic">📋</div>
+        <div class="ovc-title">Vorbereitung</div>
+        <div class="ovc-val">${prepDone} / ${prepTotal} erledigt</div>
+        <div class="prog-bar"><div class="prog-fill ${prepDone===prepTotal?'g':''}" style="width:${Math.round(prepDone/prepTotal*100)}%"></div></div>
+      </div>
+      <div class="ovc">
+        <div class="ovc-ic">🎯</div>
+        <div class="ovc-title">Aufgaben Team</div>
+        <div class="ovc-val">${respDone} / ${respTasks.length} erledigt</div>
+        <div class="prog-bar"><div class="prog-fill ${respDone===respTasks.length?'g':''}" style="width:${Math.round(respDone/respTasks.length*100)}%"></div></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:12px">
+      <div class="ch" style="background:#fef9f0;color:#78460d">📊 Fortschritt nach Phase</div>
+      <div class="ov2grid" style="padding:10px 12px 12px;gap:8px">${phaseCards}</div>
+    </div>
+
+    <div class="card">
+      <div class="ch" style="background:#fef9f0;color:#78460d">📍 Wichtige Infos</div>
+      <div class="irow"><div class="iico">🏛️</div><div><div class="ilabel">Standesamt</div><div class="ival">Standesamt Dachau · 11:00 Uhr</div></div></div>
+      <div class="irow"><div class="iico">📍</div><div><div class="ilabel">Treffpunkt</div><div class="ival">10:30 Uhr · Rathausplatz Dachau</div></div></div>
+      <div class="irow"><div class="iico">🍽️</div><div><div class="ilabel">Restaurant</div><div class="ival">Schlosscafé Dachau · ~12:10 Uhr</div></div></div>
+      <div class="irow"><div class="iico">📷</div><div><div class="ilabel">Fotografin</div><div class="ival">Nikki Lindner · 0178 2366766</div></div></div>
+      <div class="irow"><div class="iico">🌹</div><div><div class="ilabel">Blumenladen</div><div class="ival">Frank Blumen · Bahnhofstr. 15a (Mi 9–18 Uhr)</div></div></div>
+      <div class="irow"><div class="iico">💄</div><div><div class="ilabel">Styling</div><div class="ival">Augsburger Str. 17, Dachau</div></div></div>
+    </div>
+
+    <div class="card">
+      <div class="ch" style="background:#fef9f0;color:#78460d">🎵 Musik zur Trauung <span style="margin-left:4px;font-size:.62rem;opacity:.6">(Chiara, Bluetooth-Box)</span></div>
+      ${STATE.music.map(m=>`
+        <div class="music-row">
+          <div class="music-mom">${m.icon} ${esc(m.moment)}</div>
+          <div class="music-song">${esc(m.song)}</div>
+          <div class="music-art">${esc(m.artist)}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER: ZEITPLAN
+// ═══════════════════════════════════════════════════════════
+function renderZeitplan() {
+  const phases = [...new Set(STATE.prep.map(p=>p.phase))];
+  const html = phases.map(ph => {
+    const items = STATE.prep.filter(x=>x.phase===ph);
+    const done = items.filter(x=>x.done).length;
+    const rows = items.map((item,i) => {
+      const gi = STATE.prep.indexOf(item);
+      return `<div class="li">
+        <div class="li-chk ${item.done?'on':''}" onclick="toggleArr('prep',${gi})"></div>
+        <span class="li-ico">${item.icon}</span>
+        <div class="li-body" onclick="openEdit('prep',${gi})">
+          <div class="li-txt${item.done?' done':''}">${esc(item.text)}</div>
+          ${item.sub?`<div class="li-sub">${esc(item.sub)}</div>`:''}
+        </div>
+        <div class="li-edit" onclick="openEdit('prep',${gi})">✏️</div>
+      </div>`;
+    }).join('');
+    return `<div class="card">
+      <div class="ch" style="background:${done===items.length?'#d1fae5':'#fef9f0'};color:${done===items.length?'#065f46':'#78460d'}">
+        📅 ${esc(ph)} <span class="ch-prog">${done}/${items.length}</span>
+      </div>
+      ${rows}
+    </div>`;
+  }).join('');
+  e('s-zeitplan').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER: HOCHZEITSTAG
+// ═══════════════════════════════════════════════════════════
+function renderTag() {
+  const filters = [
+    {key:'alle',label:'👥 Alle',cls:''},
+    {key:'max',label:'🤵 Max',cls:'act-max'},
+    {key:'laura',label:'👰 Laura',cls:'act-laura'},
+  ];
+  const pills = filters.map(f =>
+    `<div class="fp ${dayFilter===f.key ? (f.cls||'act') : ''}" onclick="setDayFilter('${f.key}')">${f.label}</div>`
+  ).join('');
+
+  const filtered = dayFilter === 'alle'
+    ? STATE.day
+    : STATE.day.filter(d => d.who.includes(dayFilter));
+
+  const rows = filtered.map((item) => {
+    const gi = STATE.day.indexOf(item);
+    const whoTags = item.who.includes('max') && item.who.includes('laura')
+      ? `<span class="tle-tag" style="background:#fef3c7;color:#78460d">👥 Beide</span>`
+      : item.who.includes('max')
+        ? `<span class="tle-tag" style="background:var(--max-l);color:#1e40af">🤵 Max</span>`
+        : `<span class="tle-tag" style="background:var(--laura-l);color:#9d174d">👰 Laura</span>`;
+
+    return `<div class="tle">
+      <div class="tle-time">${esc(item.time)}</div>
+      <div class="tle-line">
+        <div class="tle-dot ${item.done?'on':''}"></div>
+        <div class="tle-seg"></div>
+      </div>
+      <div class="tle-body" onclick="openEdit('day',${gi})">
+        <div class="tle-title${item.done?' done':''}">${esc(item.txt)}</div>
+        ${item.sub?`<div class="tle-sub">${esc(item.sub)}</div>`:''}
+        ${dayFilter==='alle'?whoTags:''}
+      </div>
+      <div class="tle-chk ${item.done?'on':''}" onclick="toggleArr('day',${gi})"></div>
+    </div>`;
+  }).join('');
+
+  e('s-tag').innerHTML = `
+    <div class="fpills">${pills}</div>
+    <div class="card">
+      <div class="ch" style="background:#fef9f0;color:#78460d">🗓️ 1. Juli 2026 <span class="ch-prog">${STATE.day.filter(x=>x.done).length}/${STATE.day.length}</span></div>
+      <div class="tl-wrap" style="padding:6px 14px 8px">${rows}</div>
+    </div>`;
+}
+
+function setDayFilter(f) {
+  dayFilter = f;
+  renderTag();
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER: AUFGABEN
+// ═══════════════════════════════════════════════════════════
+function renderAufgaben() {
+  const html = STATE.resp.map((person, pi) => {
+    const done = person.tasks.filter(t=>t.done).length;
+    const phases = [...new Set(person.tasks.map(t=>t.phase))];
+    const body = phases.map(ph => {
+      const tasks = person.tasks.filter(t=>t.phase===ph);
+      const rows = tasks.map(task => {
+        const ti = person.tasks.indexOf(task);
+        return `<div class="li">
+          <div class="li-chk ${task.done?'on':''}" onclick="toggleResp(${pi},${ti})"></div>
+          <span class="li-ico">${task.icon}</span>
+          <div class="li-body" onclick="openEditResp(${pi},${ti})">
+            <div class="li-txt${task.done?' done':''}">${esc(task.text)}</div>
+            ${task.when?`<div class="li-sub">${esc(task.when)}</div>`:''}
+          </div>
+          <div class="li-edit" onclick="openEditResp(${pi},${ti})">✏️</div>
+        </div>`;
+      }).join('');
+      return `<div class="pclabel">${esc(ph)}</div>${rows}`;
+    }).join('');
+
+    return `<div class="pcard">
+      <div class="pchead" style="background:${person.color}" onclick="toggleCard(this)">
+        <div class="pcav">${person.icon}</div>
+        <div><div class="pcname">${esc(person.person)}</div><div class="pcrole">${esc(person.role)}</div></div>
+        <div class="pcprog">${done}/${person.tasks.length}</div>
+        <div class="pcarrow open">▾</div>
+      </div>
+      <div class="pcbody open">${body}</div>
+    </div>`;
+  }).join('');
+  e('s-aufgaben').innerHTML = html;
+}
+
+function toggleCard(header) {
+  const arrow = header.querySelector('.pcarrow');
+  const body = header.nextElementSibling;
+  body.classList.toggle('open');
+  arrow.classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER: LISTEN
+// ═══════════════════════════════════════════════════════════
+function renderListen() {
+  const pills = `
+    <div class="fp ${listenFilter==='max'?'act-max':''}" onclick="setListenFilter('max')">🤵 Max</div>
+    <div class="fp ${listenFilter==='laura'?'act-laura':''}" onclick="setListenFilter('laura')">👰 Laura</div>
+    <div class="fp ${listenFilter==='sitz'?'act':''}" onclick="setListenFilter('sitz')">🪑 Sitzplan</div>`;
+
+  let content = '';
+
+  if (listenFilter === 'sitz') {
+    const leftRows = STATE.seating.left.map((s,i)=>`
+      <div class="seat" onclick="openEditSeat('left',${i})">
+        <div class="sname" style="${s.color?`color:${s.color}`:''}">
+          ${esc(s.name)}
+        </div>
+        ${s.note?`<div class="snote">${esc(s.note)}</div>`:''}
+      </div>`).join('');
+    const rightRows = STATE.seating.right.map((s,i)=>`
+      <div class="seat" onclick="openEditSeat('right',${i})">
+        <div class="sname" style="${s.color?`color:${s.color}`:''}">
+          ${esc(s.name)}
+        </div>
+        ${s.note?`<div class="snote">${esc(s.note)}</div>`:''}
+      </div>`).join('');
+
+    const dividers = Array.from({length:8},(_,i)=>`
+      <div class="seatdiv">
+        ${i===3?`<div class="seatico">🪑</div>`:
+          i===4?`<div class="seatico">💍</div>`:
+          `<div class="seatline"></div>`}
+      </div>`).join('');
+
+    content = `<div class="card">
+      <div class="ch" style="background:#fef9f0;color:#78460d">🪑 Sitzplan Schlosscafé · 16 Gäste
+        <span style="font-size:.58rem;margin-left:4px;opacity:.6">Tippe zum Bearbeiten</span>
+      </div>
+      <div style="padding:12px">
+        <div style="text-align:center;font-size:.68rem;color:var(--muted);margin-bottom:10px">Je 1 Bistrotisch · Linke &amp; rechte Tischreihe</div>
+        <div class="seatgrid">
+          <div class="seatcol">${leftRows}</div>
+          <div style="display:flex;flex-direction:column;gap:5px">${dividers}</div>
+          <div class="seatcol">${rightRows}</div>
+        </div>
+      </div>
+    </div>`;
+  } else {
+    const pack = listenFilter === 'max' ? STATE.packMax : STATE.packLaura;
+    const pathBuy = listenFilter === 'max' ? 'packMax.buy' : 'packLaura.buy';
+    const pathPack = listenFilter === 'max' ? 'packMax.pack' : 'packLaura.pack';
+
+    const buyRows = pack.buy.map((item,i)=>`
+      <div class="li">
+        <div class="li-chk ${item.done?'on':''}" onclick="toggleArr('${pathBuy}',${i})"></div>
+        <span class="li-ico">${item.icon}</span>
+        <div class="li-body" onclick="openEdit('${pathBuy}',${i})">
+          <div class="li-txt${item.done?' done':''}">${esc(item.text)}</div>
+          ${item.sub?`<div class="li-sub">${esc(item.sub)}</div>`:''}
+        </div>
+        <div class="li-edit" onclick="openEdit('${pathBuy}',${i})">✏️</div>
+      </div>`).join('');
+
+    const packRows = pack.pack.map((item,i)=>`
+      <div class="li">
+        <div class="li-chk ${item.done?'on':''}" onclick="toggleArr('${pathPack}',${i})"></div>
+        <span class="li-ico">${item.icon}</span>
+        <div class="li-body" onclick="openEdit('${pathPack}',${i})">
+          <div class="li-txt${item.done?' done':''}">${esc(item.text)}</div>
+          ${item.sub?`<div class="li-sub">${esc(item.sub)}</div>`:''}
+        </div>
+        ${item.alert?`<span class="badge b-alert">⚡</span>`:''}
+        <div class="li-edit" onclick="openEdit('${pathPack}',${i})">✏️</div>
+      </div>`).join('');
+
+    let morningRows = '';
+    if (listenFilter === 'max') {
+      morningRows = `<div class="card">
+        <div class="ch" style="background:#dbeafe;color:#1e40af">🌅 Morgens am Hochzeitstag erledigen</div>
+        ${STATE.packMax.morning.map((item,i)=>`
+          <div class="li">
+            <div class="li-chk ${item.done?'on':''}" onclick="toggleArr('packMax.morning',${i})"></div>
+            <span class="li-ico">${item.icon}</span>
+            <div class="li-body" onclick="openEdit('packMax.morning',${i})">
+              <div class="li-txt${item.done?' done':''}">${esc(item.text)}</div>
+              ${item.sub?`<div class="li-sub">${esc(item.sub)}</div>`:''}
+            </div>
+            <div class="li-edit" onclick="openEdit('packMax.morning',${i})">✏️</div>
+          </div>`).join('')}
+      </div>`;
+    }
+
+    const name = listenFilter === 'max' ? '🤵 Max' : '👰 Laura';
+    const acol = listenFilter === 'max' ? '#dbeafe' : '#fce7f3';
+    const atxt = listenFilter === 'max' ? '#1e40af' : '#9d174d';
+
+    content = `
+      <div class="card">
+        <div class="ch" style="background:#fef3c7;color:#78460d">🛍️ ${name} – Noch kaufen / besorgen
+          <span class="ch-prog">${progText(pack.buy)}</span>
+        </div>
+        ${buyRows}
+      </div>
+      <div class="card">
+        <div class="ch" style="background:${acol};color:${atxt}">🧳 ${name} – Am Hochzeitstag einpacken
+          <span class="ch-prog">${progText(pack.pack)}</span>
+        </div>
+        ${packRows}
+      </div>
+      ${morningRows}`;
+  }
+
+  e('s-listen').innerHTML = `<div class="fpills">${pills}</div>${content}`;
+}
+
+function setListenFilter(f) {
+  listenFilter = f;
+  renderListen();
+}
+
+// ═══════════════════════════════════════════════════════════
+// getArr – nested path resolution
+// ═══════════════════════════════════════════════════════════
+function getArr(path) {
+  const parts = path.split('.');
+  let cur = STATE;
+  for (const p of parts) { cur = cur[p]; }
+  return cur;
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+countdown();
+setInterval(countdown, 60000);
+renderOverview();
+</script>
+</body>
+</html>
