@@ -317,8 +317,11 @@ const DEFAULTS = {
     {id:'d1',time:'~07:15',icon:'🚗',txt:'Gemeinsame Abfahrt Candidplatz',sub:'Max setzt Laura bei Augsburger Str. 17 ab → fährt weiter zu Dr.-Engert-Str. 1 · ~35 Min. + 5 Min. Garage',who:['max','laura'],done:false},
     {id:'d1m',time:'~08:00',icon:'🏠',txt:'Max: Ankommen bei Dr.-Engert-Str. 1',sub:'Eltern der Braut · Warten, ankommen, ausruhen bis ~10:00',who:['max'],done:false},
     {id:'d2',time:'~08:00',icon:'💄',txt:'Styling beginnt',sub:'Augsburger Str. 17 – Make-up & Haare · Niels macht Fotos',who:['laura'],done:false},
-    {id:'d3',time:'~10:00',icon:'🌹',txt:'Brautstrauß + Anstecker abholen',sub:'Frank Blumen, Bahnhofstr. 15a, Dachau',who:['max'],done:false},
-    {id:'d4',time:'~10:10',icon:'👔',txt:'Umziehen bei Dr.-Engert-Str. 1',sub:'Wohnung Eltern der Braut (Zugang vorher klären!)',who:['max'],done:false},
+    {id:'d2b',time:'~09:00',icon:'🚶',txt:'Max: Zu Fuß zu Frank Blumen',sub:'Bahnhofstr. 15a · ~10 Min. Fußweg von Dr.-Engert-Str. 1 · Laden öffnet 9:00',who:['max'],done:false},
+    {id:'d3',time:'~09:10',icon:'🌹',txt:'Brautstrauß + Anstecker abholen',sub:'Frank Blumen, Bahnhofstr. 15a · Wartezeit einplanen (~20 Min.)',who:['max'],done:false},
+    {id:'d3b',time:'~09:30',icon:'🚶',txt:'Max: Zurück zu Dr.-Engert-Str. 1',sub:'~10 Min. Fußweg zurück',who:['max'],done:false},
+    {id:'d4',time:'~09:40',icon:'👔',txt:'Umziehen + fertig machen',sub:'Dr.-Engert-Str. 1 · Wohnung Eltern der Braut · ~30 Min.',who:['max'],done:false},
+    {id:'d4b',time:'~10:15',icon:'🚶',txt:'Max: Zu Fuß zum Rathausplatz',sub:'Nur ~200 m · 3 Minuten',who:['max'],done:false},
     {id:'d5',time:'~10:20',icon:'👗',txt:'Hochzeitskleid anziehen + letzter Check',sub:'Schmuck ✓ · Schal ✓ · Haarschmuck ✓ · Ausweis ✓',who:['laura'],done:false},
     {id:'d6',time:'~10:30',icon:'🚶',txt:'Zu Fuß zum Rathausplatz',sub:'Von Augsburger Str. 17 (~5–10 Min.)',who:['laura'],done:false},
     {id:'d7',time:'10:30',icon:'📍',txt:'Treffpunkt Rathausplatz',sub:'Alle Gäste + Fotografin Nikki (0178 2366766)',who:['max','laura'],done:false},
@@ -1143,6 +1146,25 @@ stateRef.on('value', (snapshot) => {
       }
       data.day.sort((a,b) => parseTime(a.time) - parseTime(b.time));
       data._v = 2;
+      stateRef.set(data);
+    }
+    // ── Migration v3: Blumen-Ablauf mit realistischen Zeiten ──
+    if (data._v < 3) {
+      const ids = data.day.map(d => d.id);
+      // Fix d3 time and sub
+      const d3 = data.day.find(d => d.id === 'd3');
+      if (d3) { d3.time = '~09:10'; d3.sub = 'Frank Blumen, Bahnhofstr. 15a · Wartezeit einplanen (~20 Min.)'; }
+      // Fix d4 time and sub
+      const d4 = data.day.find(d => d.id === 'd4');
+      if (d4) { d4.time = '~09:40'; d4.txt = 'Umziehen + fertig machen'; d4.sub = 'Dr.-Engert-Str. 1 · Wohnung Eltern der Braut · ~30 Min.'; }
+      // Add walk to flowers if missing
+      if (!ids.includes('d2b')) data.day.push({id:'d2b',time:'~09:00',icon:'🚶',txt:'Max: Zu Fuß zu Frank Blumen',sub:'Bahnhofstr. 15a · ~10 Min. Fußweg · Laden öffnet 9:00',who:['max'],done:false});
+      // Add walk back if missing
+      if (!ids.includes('d3b')) data.day.push({id:'d3b',time:'~09:30',icon:'🚶',txt:'Max: Zurück zu Dr.-Engert-Str. 1',sub:'~10 Min. Fußweg zurück',who:['max'],done:false});
+      // Add short walk to Rathausplatz if missing
+      if (!ids.includes('d4b')) data.day.push({id:'d4b',time:'~10:15',icon:'🚶',txt:'Max: Zu Fuß zum Rathausplatz',sub:'Nur ~200 m · 3 Minuten',who:['max'],done:false});
+      data.day.sort((a,b) => parseTime(a.time) - parseTime(b.time));
+      data._v = 3;
       stateRef.set(data);
     }
     STATE = data;
