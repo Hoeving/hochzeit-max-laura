@@ -603,13 +603,67 @@ function setSyncDot(status) {
   d.className = status; // 'ok', 'busy', 'err'
 }
 
+// ── Firebase packing / unpacking ──
+// Only done-states and user-added items are stored in Firebase.
+// Static content always comes from DEFAULTS in code → updates never reset checkmarks.
+
+function packForFirebase() {
+  const done = {};
+  const addDone = (arr) => (arr||[]).forEach(item => { if (item.done) done[item.id] = true; });
+  addDone(STATE.prep);
+  addDone(STATE.day);
+  STATE.resp.forEach(p => addDone(p.tasks));
+  addDone(STATE.packMax.buy); addDone(STATE.packMax.pack); addDone(STATE.packMax.morning);
+  addDone(STATE.packLaura.buy); addDone(STATE.packLaura.pack);
+
+  const toArr = (a) => a && a.length ? a : null;
+  return {
+    _v: 4,
+    done,
+    seating: STATE.seating,
+    uPrep:         toArr(STATE.prep.filter(i => i.id.startsWith('u_'))),
+    uDay:          toArr(STATE.day.filter(i => i.id.startsWith('u_'))),
+    uRespTasks:    toArr(STATE.resp.flatMap((p,pi) => p.tasks.filter(t => t.id.startsWith('u_')).map(t => ({...t,pi})))),
+    uPackMaxBuy:   toArr(STATE.packMax.buy.filter(i => i.id.startsWith('u_'))),
+    uPackMaxPack:  toArr(STATE.packMax.pack.filter(i => i.id.startsWith('u_'))),
+    uPackLauraBuy: toArr(STATE.packLaura.buy.filter(i => i.id.startsWith('u_'))),
+    uPackLauraPack:toArr(STATE.packLaura.pack.filter(i => i.id.startsWith('u_'))),
+  };
+}
+
+function buildStateFromFirebase(fb) {
+  STATE = JSON.parse(JSON.stringify(DEFAULTS));
+  if (!fb) return;
+
+  // Apply done-states
+  const done = fb.done || {};
+  const applyDone = (arr) => arr.forEach(item => { if (done[item.id]) item.done = true; });
+  applyDone(STATE.prep); applyDone(STATE.day);
+  STATE.resp.forEach(p => applyDone(p.tasks));
+  applyDone(STATE.packMax.buy); applyDone(STATE.packMax.pack); applyDone(STATE.packMax.morning);
+  applyDone(STATE.packLaura.buy); applyDone(STATE.packLaura.pack);
+
+  // Append user-added items
+  const asArr = (x) => Array.isArray(x) ? x : (x ? Object.values(x) : []);
+  asArr(fb.uPrep).forEach(i => STATE.prep.push(i));
+  asArr(fb.uDay).forEach(i => STATE.day.push(i));
+  STATE.day.sort((a,b) => parseTime(a.time) - parseTime(b.time));
+  asArr(fb.uRespTasks).forEach(t => { if (STATE.resp[t.pi]) STATE.resp[t.pi].tasks.push(t); });
+  asArr(fb.uPackMaxBuy).forEach(i => STATE.packMax.buy.push(i));
+  asArr(fb.uPackMaxPack).forEach(i => STATE.packMax.pack.push(i));
+  asArr(fb.uPackLauraBuy).forEach(i => STATE.packLaura.buy.push(i));
+  asArr(fb.uPackLauraPack).forEach(i => STATE.packLaura.pack.push(i));
+
+  if (fb.seating) STATE.seating = fb.seating;
+}
+
 // Save to Firebase (debounced 400ms)
 let saveTimer = null;
 function saveState() {
   setSyncDot('busy');
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    stateRef.set(STATE)
+    stateRef.set(packForFirebase())
       .then(() => setSyncDot('ok'))
       .catch(() => setSyncDot('err'));
   }, 400);
@@ -1249,50 +1303,41 @@ setInterval(() => { if (currentTab === 'tag') renderTag(); }, 60000);
 
 function startDataListener() {
 stateRef.on('value', (snapshot) => {
-  const data = snapshot.val();
-  if (data) {
-    // ── Migration v2: Gemeinsame Abfahrt 07:15, Max zu Dr.-Engert-Str. ──
-    if (!data._v || data._v < 2) {
-      // Update or replace d1 with corrected shared departure
-      const d1idx = (data.day || []).findIndex(d => d.id === 'd1' || d.id === 'd1l');
-      const newD1 = {id:'d1',time:'~07:15',icon:'🚗',txt:'Gemeinsame Abfahrt Candidplatz',sub:'Max setzt Laura bei Augsburger Str. 17 ab → fährt weiter zu Dr.-Engert-Str. 1 · ~35 Min. + 5 Min. Garage',who:['max','laura'],done:false};
-      if (d1idx >= 0) data.day[d1idx] = newD1;
-      else data.day.unshift(newD1);
-      // Remove old separate Max departure if present
-      data.day = data.day.filter(d => d.id !== 'd1l');
-      // Add Max morning entry at Dr.-Engert-Str. if not present
-      if (!data.day.find(d => d.id === 'd1m')) {
-        data.day.push({id:'d1m',time:'~08:00',icon:'🏠',txt:'Max: Ankommen bei Dr.-Engert-Str. 1',sub:'Eltern der Braut · Warten, ankommen, ausruhen bis ~10:00',who:['max'],done:false});
-      }
-      data.day.sort((a,b) => parseTime(a.time) - parseTime(b.time));
-      data._v = 2;
-      stateRef.set(data);
-    }
-    // ── Migration v3: Blumen-Ablauf mit realistischen Zeiten ──
-    if (data._v < 3) {
-      const ids = data.day.map(d => d.id);
-      // Fix d3 time and sub
-      const d3 = data.day.find(d => d.id === 'd3');
-      if (d3) { d3.time = '~09:10'; d3.sub = 'Frank Blumen, Bahnhofstr. 15a · Wartezeit einplanen (~20 Min.)'; }
-      // Fix d4 time and sub
-      const d4 = data.day.find(d => d.id === 'd4');
-      if (d4) { d4.time = '~09:40'; d4.txt = 'Umziehen + fertig machen'; d4.sub = 'Dr.-Engert-Str. 1 · Wohnung Eltern der Braut · ~30 Min.'; }
-      // Add walk to flowers if missing
-      if (!ids.includes('d2b')) data.day.push({id:'d2b',time:'~09:00',icon:'🚶',txt:'Max: Zu Fuß zu Frank Blumen',sub:'Bahnhofstr. 15a · ~10 Min. Fußweg · Laden öffnet 9:00',who:['max'],done:false});
-      // Add walk back if missing
-      if (!ids.includes('d3b')) data.day.push({id:'d3b',time:'~09:30',icon:'🚶',txt:'Max: Zurück zu Dr.-Engert-Str. 1',sub:'~10 Min. Fußweg zurück',who:['max'],done:false});
-      // Add short walk to Rathausplatz if missing
-      if (!ids.includes('d4b')) data.day.push({id:'d4b',time:'~10:15',icon:'🚶',txt:'Max: Zu Fuß zum Rathausplatz',sub:'Nur ~200 m · 3 Minuten',who:['max'],done:false});
-      data.day.sort((a,b) => parseTime(a.time) - parseTime(b.time));
-      data._v = 3;
-      stateRef.set(data);
-    }
-    STATE = data;
+  const fb = snapshot.val();
+
+  if (fb && fb._v >= 4) {
+    // ── Current format: just apply ──
+    buildStateFromFirebase(fb);
+
+  } else if (fb) {
+    // ── Old format (v1–v3): extract done-states + user items, migrate ──
+    const done = {};
+    const extractDone = (arr) => (arr||[]).forEach(i => { if (i.done) done[i.id] = true; });
+    extractDone(fb.prep); extractDone(fb.day);
+    (fb.resp||[]).forEach(p => extractDone(p.tasks||[]));
+    extractDone((fb.packMax||{}).buy); extractDone((fb.packMax||{}).pack); extractDone((fb.packMax||{}).morning);
+    extractDone((fb.packLaura||{}).buy); extractDone((fb.packLaura||{}).pack);
+
+    const toArr = (a) => a && a.length ? a : null;
+    const newFb = {
+      _v: 4,
+      done,
+      seating: fb.seating || DEFAULTS.seating,
+      uPrep:         toArr((fb.prep||[]).filter(i=>i.id.startsWith('u_'))),
+      uDay:          toArr((fb.day||[]).filter(i=>i.id.startsWith('u_'))),
+      uRespTasks:    toArr((fb.resp||[]).flatMap((p,pi)=>(p.tasks||[]).filter(t=>t.id.startsWith('u_')).map(t=>({...t,pi})))),
+      uPackMaxBuy:   toArr(((fb.packMax||{}).buy||[]).filter(i=>i.id.startsWith('u_'))),
+      uPackMaxPack:  toArr(((fb.packMax||{}).pack||[]).filter(i=>i.id.startsWith('u_'))),
+      uPackLauraBuy: toArr(((fb.packLaura||{}).buy||[]).filter(i=>i.id.startsWith('u_'))),
+      uPackLauraPack:toArr(((fb.packLaura||{}).pack||[]).filter(i=>i.id.startsWith('u_'))),
+    };
+    stateRef.set(newFb);
+    buildStateFromFirebase(newFb);
+
   } else {
-    // First ever load – write defaults to Firebase
-    STATE = JSON.parse(JSON.stringify(DEFAULTS));
-    STATE._v = 2;
-    stateRef.set(STATE);
+    // ── First ever load – initialize Firebase ──
+    buildStateFromFirebase(null);
+    stateRef.set(packForFirebase());
   }
 
   if (firstLoad) {
@@ -1301,14 +1346,12 @@ stateRef.on('value', (snapshot) => {
     setSyncDot('ok');
     renderOverview();
   } else {
-    // Synced update from other device – re-render current view
     setSyncDot('ok');
     render(currentTab);
   }
 }, (error) => {
   console.error('Firebase error:', error);
   setSyncDot('err');
-  // Fallback: use defaults and hide loading
   document.getElementById('loading').style.display = 'none';
   renderOverview();
 });
