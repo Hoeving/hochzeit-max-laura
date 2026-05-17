@@ -11,6 +11,7 @@
 <!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <style>
 /* ── Loading overlay ── */
 #loading{position:fixed;inset:0;background:#fff;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
@@ -203,9 +204,55 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 /* ── Phase header ── */
 .phase-hdr{font-size:.63rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding:12px 14px 4px;display:flex;justify-content:space-between;align-items:center}
 .phase-prog{font-weight:700;color:var(--gold)}
+
+/* ── Login Screen ── */
+#login-screen{position:fixed;inset:0;background:linear-gradient(160deg,#fdf6e9 0%,#ede8de 100%);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.login-logo{font-size:3.2rem;margin-bottom:14px}
+.login-title{font-size:1.5rem;font-weight:900;color:var(--txt);text-align:center;letter-spacing:-.02em}
+.login-sub{font-size:.78rem;color:var(--muted);margin-top:5px;margin-bottom:34px;text-align:center}
+.login-label{font-size:.67rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:9px;align-self:flex-start;width:100%;max-width:320px}
+.login-users{display:flex;gap:10px;width:100%;max-width:320px;margin-bottom:18px}
+.login-user{flex:1;padding:15px 8px;border-radius:14px;border:2.5px solid #e5e7eb;background:#fff;font-size:.9rem;font-weight:700;text-align:center;cursor:pointer;transition:all .2s;font-family:inherit;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.login-user.active{border-color:var(--gold);background:var(--gold-l);color:#78460d;box-shadow:0 2px 8px rgba(201,169,110,.2)}
+.login-pw{width:100%;max-width:320px;border:1.5px solid #e5e7eb;border-radius:12px;padding:13px 14px;font-size:.92rem;font-family:inherit;outline:none;margin-bottom:12px;color:var(--txt);background:#fff}
+.login-pw:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,169,110,.15)}
+.login-btn{width:100%;max-width:320px;padding:15px;border-radius:13px;background:var(--gold);color:#fff;border:none;font-size:.92rem;font-weight:800;cursor:pointer;font-family:inherit;transition:opacity .2s;box-shadow:0 2px 10px rgba(201,169,110,.35)}
+.login-btn:active{opacity:.85}
+.login-btn:disabled{opacity:.5;cursor:default}
+.login-err{color:#ef4444;font-size:.75rem;font-weight:700;margin-bottom:10px;max-width:320px;width:100%;text-align:center;min-height:18px}
+
+/* ── Header user badge ── */
+.hdr-user-badge{font-size:.68rem;font-weight:800;color:var(--muted);cursor:pointer;padding:5px 9px;border-radius:20px;background:#f3f4f6;white-space:nowrap}
+.hdr-user-badge:active{background:#e5e7eb}
+
+/* ── Now indicator (Hochzeitstag) ── */
+.tle-now-dot{background:var(--gold)!important;box-shadow:0 0 0 4px rgba(201,169,110,.25);animation:nowpulse 2s ease-in-out infinite}
+@keyframes nowpulse{0%,100%{box-shadow:0 0 0 4px rgba(201,169,110,.25)}50%{box-shadow:0 0 0 8px rgba(201,169,110,.08)}}
+.tle-now-badge{display:inline-flex;align-items:center;gap:3px;font-size:.58rem;padding:2px 7px;border-radius:8px;font-weight:800;background:var(--gold);color:#fff;margin-left:6px;vertical-align:middle;flex-shrink:0}
+.tle-now-row .tle-body{background:var(--gold-l);border-radius:10px;padding:8px 10px 10px 10px}
 </style>
 </head>
 <body>
+
+<!-- Login Screen -->
+<div id="login-screen">
+  <div class="login-logo">💍</div>
+  <div class="login-title">Max &amp; Laura</div>
+  <div class="login-sub">Standesamt Dachau · 1. Juli 2026</div>
+
+  <div class="login-label">Anmelden als</div>
+  <div class="login-users">
+    <button class="login-user active" data-user="max" onclick="selectLoginUser(this)">🤵 Max</button>
+    <button class="login-user" data-user="laura" onclick="selectLoginUser(this)">👰 Laura</button>
+  </div>
+
+  <input class="login-pw" type="password" id="login-pw" placeholder="Passwort eingeben…"
+    autocomplete="current-password"
+    onkeydown="if(event.key==='Enter')doLogin()">
+  <div class="login-err" id="login-err"></div>
+  <button class="login-btn" id="login-btn" onclick="doLogin()">Anmelden ✓</button>
+</div>
+
 <div id="app">
 
 <!-- Loading screen -->
@@ -221,6 +268,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
   </div>
   <div class="hdr-right">
     <div id="sync-dot" title="Sync-Status"></div>
+    <div id="hdr-user-badge" class="hdr-user-badge" onclick="doLogout()" title="Abmelden" style="display:none"></div>
     <div class="cd-pill" id="cdpill">…</div>
   </div>
 </div>
@@ -485,6 +533,8 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const stateRef = db.ref('wedding_state');
+const auth = firebase.auth();
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
 // ═══════════════════════════════════════════════════════════
 // STATE
@@ -495,6 +545,57 @@ let dayFilter = 'alle';
 let listenFilter = 'max';
 let editTarget = null;
 let firstLoad = true;
+let dataListenerStarted = false;
+let currentUserName = '';
+
+// ── Login helpers ──
+function selectLoginUser(btn) {
+  document.querySelectorAll('.login-user').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function doLogin() {
+  const active = document.querySelector('.login-user.active');
+  const user = active ? active.dataset.user : 'max';
+  const email = user + '@hochzeit.app';
+  const pw = document.getElementById('login-pw').value;
+  const errEl = document.getElementById('login-err');
+  if (!pw) { errEl.textContent = 'Bitte Passwort eingeben.'; return; }
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true;
+  btn.textContent = 'Anmelden…';
+  errEl.textContent = '';
+  auth.signInWithEmailAndPassword(email, pw)
+    .catch(() => {
+      errEl.textContent = '❌ Falsches Passwort – bitte nochmal versuchen.';
+      btn.disabled = false;
+      btn.textContent = 'Anmelden ✓';
+    });
+}
+
+function doLogout() {
+  if (confirm('Wirklich abmelden?')) auth.signOut();
+}
+
+// ── Firebase Auth state ──
+auth.onAuthStateChanged(user => {
+  if (user) {
+    currentUserName = user.email.startsWith('laura') ? 'Laura' : 'Max';
+    const badge = document.getElementById('hdr-user-badge');
+    badge.textContent = currentUserName === 'Laura' ? '👰 Laura' : '🤵 Max';
+    badge.style.display = 'block';
+    document.getElementById('login-screen').style.display = 'none';
+    if (!dataListenerStarted) {
+      dataListenerStarted = true;
+      startDataListener();
+    }
+  } else {
+    currentUserName = '';
+    document.getElementById('hdr-user-badge').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('loading').style.display = 'none';
+  }
+});
 
 function setSyncDot(status) {
   const d = document.getElementById('sync-dot');
@@ -897,22 +998,38 @@ function renderTag() {
     ? STATE.day
     : STATE.day.filter(d => d.who.includes(dayFilter));
 
-  const rows = filtered.map((item) => {
+  // ── Wedding day auto-highlight ──
+  const now = new Date();
+  const isWeddingDay = now.getFullYear() === 2026 && now.getMonth() === 6 && now.getDate() === 1;
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  let currentEventIdx = -1;
+  if (isWeddingDay) {
+    for (let i = 0; i < filtered.length; i++) {
+      const t = parseTime(filtered[i].time);
+      if (t !== 9999 && t <= nowMins) currentEventIdx = i;
+    }
+  }
+
+  const rows = filtered.map((item, fi) => {
     const gi = STATE.day.indexOf(item);
+    const isNow = isWeddingDay && fi === currentEventIdx;
     const whoTags = item.who.includes('max') && item.who.includes('laura')
       ? `<span class="tle-tag" style="background:#fef3c7;color:#78460d">👥 Beide</span>`
       : item.who.includes('max')
         ? `<span class="tle-tag" style="background:var(--max-l);color:#1e40af">🤵 Max</span>`
         : `<span class="tle-tag" style="background:var(--laura-l);color:#9d174d">👰 Laura</span>`;
 
-    return `<div class="tle">
+    return `<div class="tle ${isNow?'tle-now-row':''}">
       <div class="tle-time">${esc(item.time)}</div>
       <div class="tle-line">
-        <div class="tle-dot ${item.done?'on':''}"></div>
+        <div class="tle-dot ${item.done?'on':''} ${isNow?'tle-now-dot':''}"></div>
         <div class="tle-seg"></div>
       </div>
       <div class="tle-body" onclick="openEdit('day',${gi})">
-        <div class="tle-title${item.done?' done':''}">${esc(item.txt)}</div>
+        <div class="tle-title${item.done?' done':''}">
+          ${esc(item.txt)}
+          ${isNow?'<span class="tle-now-badge">⏰ JETZT</span>':''}
+        </div>
         ${item.sub?`<div class="tle-sub">${esc(item.sub)}</div>`:''}
         ${dayFilter==='alle'?whoTags:''}
       </div>
@@ -1127,7 +1244,10 @@ function getArr(path) {
 // ═══════════════════════════════════════════════════════════
 countdown();
 setInterval(countdown, 60000);
+// Auto-refresh Hochzeitstag-Highlight every minute
+setInterval(() => { if (currentTab === 'tag') renderTag(); }, 60000);
 
+function startDataListener() {
 stateRef.on('value', (snapshot) => {
   const data = snapshot.val();
   if (data) {
@@ -1192,6 +1312,7 @@ stateRef.on('value', (snapshot) => {
   document.getElementById('loading').style.display = 'none';
   renderOverview();
 });
+} // end startDataListener
 </script>
 </body>
 </html>
