@@ -185,6 +185,21 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 .toast{position:fixed;bottom:calc(var(--sb) + 72px);left:50%;transform:translateX(-50%) translateY(16px);background:#1a1a1a;color:#fff;padding:8px 16px;border-radius:20px;font-size:.75rem;font-weight:700;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;z-index:200}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+/* ── Add button ── */
+.add-btn{display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;font-size:.78rem;font-weight:700;color:var(--muted);cursor:pointer;border:none;border-top:1px dashed rgba(0,0,0,.1);background:transparent;font-family:inherit;text-align:left;transition:background .15s}
+.add-btn:active{background:#f9f8f6}
+.add-btn .plus-ic{width:22px;height:22px;border-radius:50%;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0;line-height:1}
+
+/* ── Who-selector (modal) ── */
+.m-label{font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.who-row{display:flex;gap:7px;margin-bottom:8px}
+.who-pill{flex:1;padding:8px 4px;border-radius:10px;border:2px solid #e5e7eb;background:#fff;font-size:.75rem;font-weight:700;text-align:center;cursor:pointer;transition:all .15s;font-family:inherit}
+.who-pill.active{border-color:var(--gold);background:var(--gold-l);color:#78460d}
+.m-time{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.m-time input{flex:1;border:1.5px solid #e5e7eb;border-radius:11px;padding:10px 12px;font-size:.88rem;font-family:inherit;outline:none}
+.m-time input:focus{border-color:var(--gold)}
+.m-time label{font-size:.75rem;color:var(--muted);font-weight:700;white-space:nowrap}
+
 /* ── Phase header ── */
 .phase-hdr{font-size:.63rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding:12px 14px 4px;display:flex;justify-content:space-between;align-items:center}
 .phase-prog{font-weight:700;color:var(--gold)}
@@ -232,9 +247,23 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 <div class="overlay" id="edit-overlay">
   <div class="sheet">
     <div class="m-handle"></div>
-    <div class="m-title">✏️ Eintrag bearbeiten</div>
+    <div class="m-title" id="m-title">✏️ Eintrag bearbeiten</div>
+    <!-- Zeitfeld (nur Hochzeitstag) -->
+    <div class="m-time" id="ei-time-row" style="display:none">
+      <label>⏰ Uhrzeit</label>
+      <input id="ei-time" placeholder="z.B. 10:30 oder ~12:00">
+    </div>
+    <!-- Wer (nur Hochzeitstag) -->
+    <div id="ei-who-row" style="display:none">
+      <div class="m-label">Für wen?</div>
+      <div class="who-row">
+        <button class="who-pill active" data-who="both" onclick="selectWho(this)">👥 Beide</button>
+        <button class="who-pill" data-who="max" onclick="selectWho(this)">🤵 Max</button>
+        <button class="who-pill" data-who="laura" onclick="selectWho(this)">👰 Laura</button>
+      </div>
+    </div>
     <input class="m-input" id="ei-text" placeholder="Text…">
-    <input class="m-input m-sub" id="ei-sub" placeholder="Zusatzinfo (optional)…">
+    <input class="m-input m-sub" id="ei-sub" placeholder="Zusatzinfo / Zeitangabe (optional)…">
     <div class="m-actions">
       <button class="btn btn-c" onclick="closeModal()">Abbrechen</button>
       <button class="btn btn-s" onclick="saveEdit()">Speichern</button>
@@ -589,36 +618,114 @@ function toggleArr(path, idx) {
   toast(arr[idx].done ? '✓ Erledigt!' : 'Wieder offen');
 }
 
+function showModalExtras(show) {
+  e('ei-time-row').style.display = show ? 'flex' : 'none';
+  e('ei-who-row').style.display = show ? 'block' : 'none';
+}
+
+function selectWho(btn) {
+  document.querySelectorAll('.who-pill').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function getSelectedWho() {
+  const active = document.querySelector('.who-pill.active');
+  const w = active ? active.dataset.who : 'both';
+  if (w === 'both') return ['max','laura'];
+  return [w];
+}
+
+function resetWho() {
+  document.querySelectorAll('.who-pill').forEach(p=>p.classList.remove('active'));
+  document.querySelector('.who-pill[data-who="both"]').classList.add('active');
+}
+
+// ── ADD new item ──
+function openAdd(type, context) {
+  editTarget = {mode:'add', type, context};
+  e('m-title').textContent = '➕ Neu hinzufügen';
+  e('ei-text').value = '';
+  e('ei-sub').value = '';
+  e('ei-time').value = '';
+  resetWho();
+  showModalExtras(type === 'day');
+  e('edit-overlay').classList.add('open');
+  setTimeout(()=>e('ei-text').focus(), 300);
+}
+
+function saveAdd() {
+  const txt = e('ei-text').value.trim();
+  if (!txt) { closeModal(); return; }
+  const sub = e('ei-sub').value.trim();
+  const id = 'u_' + Date.now();
+
+  if (editTarget.type === 'prep') {
+    const phase = editTarget.context;
+    STATE.prep.push({id, phase, icon:'📝', text:txt, sub, done:false});
+  } else if (editTarget.type === 'day') {
+    const time = e('ei-time').value.trim() || '–';
+    const who = getSelectedWho();
+    STATE.day.push({id, time, icon:'📝', txt, sub, who, done:false});
+    STATE.day.sort((a,b) => parseTime(a.time) - parseTime(b.time));
+  } else if (editTarget.type === 'resp') {
+    const pi = editTarget.context;
+    STATE.resp[pi].tasks.push({id, phase:'Hochzeitstag', icon:'📝', text:txt, when:sub, done:false});
+  } else if (editTarget.type === 'pack') {
+    const {packKey, section} = editTarget.context;
+    STATE[packKey][section].push({id, icon:'📝', text:txt, sub, done:false});
+  }
+
+  saveState();
+  closeModal();
+  render(currentTab);
+  toast('✓ Hinzugefügt!');
+}
+
+function parseTime(t) {
+  const m = String(t).replace('~','').match(/(\d+):(\d+)/);
+  if (m) return parseInt(m[1]) * 60 + parseInt(m[2]);
+  if (String(t).toLowerCase().includes('danach')) return 9000;
+  return 9999;
+}
+
 function openEdit(path, idx, field2) {
   const arr = getArr(path);
   const item = arr[idx];
-  editTarget = {path, idx};
+  editTarget = {mode:'edit', path, idx};
+  e('m-title').textContent = '✏️ Eintrag bearbeiten';
   e('ei-text').value = item.text || item.txt || item.name || '';
   e('ei-sub').value = item.sub || item.note || '';
+  showModalExtras(false);
   e('edit-overlay').classList.add('open');
   setTimeout(()=>e('ei-text').focus(), 300);
 }
 
 function openEditResp(pi, ti) {
   const task = STATE.resp[pi].tasks[ti];
-  editTarget = {path:'resp', pi, ti};
+  editTarget = {mode:'edit', path:'resp', pi, ti};
+  e('m-title').textContent = '✏️ Aufgabe bearbeiten';
   e('ei-text').value = task.text;
   e('ei-sub').value = task.when || '';
+  showModalExtras(false);
   e('edit-overlay').classList.add('open');
   setTimeout(()=>e('ei-text').focus(), 300);
 }
 
 function openEditSeat(side, idx) {
   const item = STATE.seating[side][idx];
-  editTarget = {path:'seating', side, idx};
+  editTarget = {mode:'edit', path:'seating', side, idx};
+  e('m-title').textContent = '✏️ Sitzplatz bearbeiten';
   e('ei-text').value = item.name;
   e('ei-sub').value = item.note || '';
+  showModalExtras(false);
   e('edit-overlay').classList.add('open');
   setTimeout(()=>e('ei-text').focus(), 300);
 }
 
 function saveEdit() {
   if (!editTarget) return;
+  if (editTarget.mode === 'add') { saveAdd(); return; }
+
   const txt = e('ei-text').value.trim();
   const sub = e('ei-sub').value.trim();
   if (!txt) { closeModal(); return; }
@@ -761,6 +868,9 @@ function renderZeitplan() {
         📅 ${esc(ph)} <span class="ch-prog">${done}/${items.length}</span>
       </div>
       ${rows}
+      <button class="add-btn" onclick="openAdd('prep','${esc(ph)}')">
+        <span class="plus-ic">+</span> Aufgabe hinzufügen
+      </button>
     </div>`;
   }).join('');
   e('s-zeitplan').innerHTML = html;
@@ -811,6 +921,9 @@ function renderTag() {
     <div class="card">
       <div class="ch" style="background:#fef9f0;color:#78460d">🗓️ 1. Juli 2026 <span class="ch-prog">${STATE.day.filter(x=>x.done).length}/${STATE.day.length}</span></div>
       <div class="tl-wrap" style="padding:6px 14px 8px">${rows}</div>
+      <button class="add-btn" onclick="openAdd('day',null)">
+        <span class="plus-ic">+</span> Ereignis hinzufügen
+      </button>
     </div>`;
 }
 
@@ -850,7 +963,12 @@ function renderAufgaben() {
         <div class="pcprog">${done}/${person.tasks.length}</div>
         <div class="pcarrow open">▾</div>
       </div>
-      <div class="pcbody open">${body}</div>
+      <div class="pcbody open">
+        ${body}
+        <button class="add-btn" onclick="openAdd('resp',${pi})">
+          <span class="plus-ic">+</span> Aufgabe hinzufügen
+        </button>
+      </div>
     </div>`;
   }).join('');
   e('s-aufgaben').innerHTML = html;
@@ -959,18 +1077,25 @@ function renderListen() {
     const acol = listenFilter === 'max' ? '#dbeafe' : '#fce7f3';
     const atxt = listenFilter === 'max' ? '#1e40af' : '#9d174d';
 
+    const packKey = listenFilter === 'max' ? 'packMax' : 'packLaura';
     content = `
       <div class="card">
         <div class="ch" style="background:#fef3c7;color:#78460d">🛍️ ${name} – Noch kaufen / besorgen
           <span class="ch-prog">${progText(pack.buy)}</span>
         </div>
         ${buyRows}
+        <button class="add-btn" onclick="openAdd('pack',{packKey:'${packKey}',section:'buy'})">
+          <span class="plus-ic">+</span> Eintrag hinzufügen
+        </button>
       </div>
       <div class="card">
         <div class="ch" style="background:${acol};color:${atxt}">🧳 ${name} – Am Hochzeitstag einpacken
           <span class="ch-prog">${progText(pack.pack)}</span>
         </div>
         ${packRows}
+        <button class="add-btn" onclick="openAdd('pack',{packKey:'${packKey}',section:'pack'})">
+          <span class="plus-ic">+</span> Eintrag hinzufügen
+        </button>
       </div>
       ${morningRows}`;
   }
