@@ -12,6 +12,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
 /* ── Loading overlay ── */
 #loading{position:fixed;inset:0;background:#fff;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
@@ -219,7 +220,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 .login-btn{width:100%;max-width:320px;padding:15px;border-radius:13px;background:var(--gold);color:#fff;border:none;font-size:.92rem;font-weight:800;cursor:pointer;font-family:inherit;transition:opacity .2s;box-shadow:0 2px 10px rgba(201,169,110,.35)}
 .login-btn:active{opacity:.85}
 .login-btn:disabled{opacity:.5;cursor:default}
-.login-err{color:#ef4444;font-size:.75rem;font-weight:700;margin-bottom:10px;max-width:320px;width:100%;text-align:center;min-height:18px}
+.login-err{font-size:.75rem;font-weight:700;margin-bottom:10px;max-width:320px;width:100%;text-align:center;min-height:18px;line-height:1.4;color:#ef4444}
 
 /* ── Header user badge ── */
 .hdr-user-badge{font-size:.68rem;font-weight:800;color:var(--muted);cursor:pointer;padding:5px 9px;border-radius:20px;background:#f3f4f6;white-space:nowrap}
@@ -519,6 +520,19 @@ const DEFAULTS = {
 };
 
 // ═══════════════════════════════════════════════════════════
+// DEFAULT ITEM LOOKUP (for text-patch diffing)
+// ═══════════════════════════════════════════════════════════
+const DEFAULT_ITEMS = {};
+(function() {
+  const reg = (arr) => arr.forEach(i => { DEFAULT_ITEMS[i.id] = JSON.parse(JSON.stringify(i)); });
+  reg(DEFAULTS.prep);
+  reg(DEFAULTS.day);
+  DEFAULTS.resp.forEach(p => reg(p.tasks));
+  reg(DEFAULTS.packMax.buy); reg(DEFAULTS.packMax.pack); reg(DEFAULTS.packMax.morning);
+  reg(DEFAULTS.packLaura.buy); reg(DEFAULTS.packLaura.pack);
+})();
+
+// ═══════════════════════════════════════════════════════════
 // FIREBASE
 // ═══════════════════════════════════════════════════════════
 const firebaseConfig = {
@@ -548,29 +562,117 @@ let firstLoad = true;
 let dataListenerStarted = false;
 let currentUserName = '';
 
+// ── EmailJS Config ──
+// Trage hier deine EmailJS-Daten ein (siehe Anleitung unten):
+const EJS_SVC = 'DEIN_SERVICE_ID';    // z.B. 'service_abc123'
+const EJS_TPL = 'DEIN_TEMPLATE_ID';   // z.B. 'template_xyz789'
+const EJS_KEY = 'DEIN_PUBLIC_KEY';    // z.B. 'user_AbCdEf...'
+const APP_URL = 'https://Hoeving.github.io/hochzeit-max-laura';
+
+// ── Lockout helpers ──
+const MAX_TRIES = 3;
+const attRef = (user) => db.ref('loginAttempts/' + user);
+
+async function getLockout(user) {
+  const snap = await attRef(user).once('value');
+  return snap.val() || {count: 0, locked: false};
+}
+
+async function recordFail(user) {
+  const d = await getLockout(user);
+  const count = (d.count || 0) + 1;
+  const locked = count >= MAX_TRIES;
+  await attRef(user).set({count, locked, ts: Date.now()});
+  if (locked) sendLockoutEmail(user);
+  return {count, locked};
+}
+
+async function clearLockout(user) {
+  await attRef(user).remove();
+}
+
+function sendLockoutEmail(user) {
+  const name = user === 'laura' ? 'Laura' : 'Max';
+  const unlockUrl = APP_URL + '?unlock=' + user;
+  try {
+    if (typeof emailjs !== 'undefined' && EJS_KEY !== 'DEIN_PUBLIC_KEY') {
+      emailjs.init({publicKey: EJS_KEY});
+      emailjs.send(EJS_SVC, EJS_TPL, {
+        user_name: name,
+        time: new Date().toLocaleString('de-DE'),
+        unlock_url: unlockUrl,
+      });
+    }
+  } catch(e) { console.warn('EmailJS:', e); }
+}
+
+// ── URL-basiertes Entsperren ──
+(function handleUnlockUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const u = params.get('unlock');
+  if (u === 'max' || u === 'laura') {
+    // Clean URL immediately
+    history.replaceState(null, '', window.location.pathname);
+    // Wait for Firebase init, then clear lockout
+    setTimeout(() => {
+      attRef(u).remove().then(() => {
+        const errEl = document.getElementById('login-err');
+        if (errEl) {
+          errEl.textContent = '✓ Konto entsperrt – bitte jetzt anmelden.';
+          errEl.style.color = '#10b981';
+        }
+        // Pre-select the unlocked user
+        document.querySelectorAll('.login-user').forEach(b => {
+          b.classList.toggle('active', b.dataset.user === u);
+        });
+      });
+    }, 1500);
+  }
+})();
+
 // ── Login helpers ──
 function selectLoginUser(btn) {
   document.querySelectorAll('.login-user').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
 }
 
-function doLogin() {
+async function doLogin() {
   const active = document.querySelector('.login-user.active');
   const user = active ? active.dataset.user : 'max';
   const email = user + '@hochzeit.app';
   const pw = document.getElementById('login-pw').value;
   const errEl = document.getElementById('login-err');
-  if (!pw) { errEl.textContent = 'Bitte Passwort eingeben.'; return; }
   const btn = document.getElementById('login-btn');
+
+  if (!pw) { errEl.textContent = 'Bitte Passwort eingeben.'; errEl.style.color = '#ef4444'; return; }
+
+  // Check lockout before attempting
+  const lockout = await getLockout(user);
+  if (lockout.locked) {
+    errEl.style.color = '#ef4444';
+    errEl.textContent = '🔒 Konto gesperrt. Max wurde per E-Mail benachrichtigt.';
+    return;
+  }
+
   btn.disabled = true;
   btn.textContent = 'Anmelden…';
   errEl.textContent = '';
-  auth.signInWithEmailAndPassword(email, pw)
-    .catch(() => {
-      errEl.textContent = '❌ Falsches Passwort – bitte nochmal versuchen.';
-      btn.disabled = false;
-      btn.textContent = 'Anmelden ✓';
-    });
+
+  try {
+    await auth.signInWithEmailAndPassword(email, pw);
+    await clearLockout(user); // Success → reset counter
+  } catch(e) {
+    const result = await recordFail(user);
+    errEl.style.color = '#ef4444';
+    if (result.locked) {
+      errEl.textContent = `🔒 Konto nach ${MAX_TRIES} Versuchen gesperrt. Max wurde benachrichtigt.`;
+    } else {
+      const left = MAX_TRIES - result.count;
+      errEl.textContent = `❌ Falsches Passwort – noch ${left} Versuch${left === 1 ? '' : 'e'}.`;
+    }
+    btn.disabled = false;
+    btn.textContent = 'Anmelden ✓';
+  }
 }
 
 function doLogout() {
@@ -616,10 +718,29 @@ function packForFirebase() {
   addDone(STATE.packMax.buy); addDone(STATE.packMax.pack); addDone(STATE.packMax.morning);
   addDone(STATE.packLaura.buy); addDone(STATE.packLaura.pack);
 
+  // Text patches: only for built-in items that were edited by the user
+  const textPatches = {};
+  const addPatch = (item) => {
+    if (item.id.startsWith('u_')) return; // user-added items stored separately
+    const def = DEFAULT_ITEMS[item.id];
+    if (!def) return;
+    const changed = Object.keys(def).some(k => {
+      if (k === 'done') return false;
+      return JSON.stringify(item[k]) !== JSON.stringify(def[k]);
+    });
+    if (changed) textPatches[item.id] = {...item, done: undefined};
+  };
+  STATE.prep.forEach(addPatch);
+  STATE.day.forEach(addPatch);
+  STATE.resp.forEach(p => p.tasks.forEach(addPatch));
+  STATE.packMax.buy.forEach(addPatch); STATE.packMax.pack.forEach(addPatch); STATE.packMax.morning.forEach(addPatch);
+  STATE.packLaura.buy.forEach(addPatch); STATE.packLaura.pack.forEach(addPatch);
+
   const toArr = (a) => a && a.length ? a : null;
   return {
     _v: 4,
     done,
+    textPatches: Object.keys(textPatches).length ? textPatches : null,
     seating: STATE.seating,
     uPrep:         toArr(STATE.prep.filter(i => i.id.startsWith('u_'))),
     uDay:          toArr(STATE.day.filter(i => i.id.startsWith('u_'))),
@@ -635,13 +756,37 @@ function buildStateFromFirebase(fb) {
   STATE = JSON.parse(JSON.stringify(DEFAULTS));
   if (!fb) return;
 
+  // Apply text patches (edits to existing items)
+  const patches = fb.textPatches || {};
+  const applyPatch = (arr) => arr.map(item => {
+    const p = patches[item.id];
+    return p ? {...p, done: item.done} : item;
+  });
+
   // Apply done-states
   const done = fb.done || {};
   const applyDone = (arr) => arr.forEach(item => { if (done[item.id]) item.done = true; });
-  applyDone(STATE.prep); applyDone(STATE.day);
-  STATE.resp.forEach(p => applyDone(p.tasks));
-  applyDone(STATE.packMax.buy); applyDone(STATE.packMax.pack); applyDone(STATE.packMax.morning);
-  applyDone(STATE.packLaura.buy); applyDone(STATE.packLaura.pack);
+
+  // Prep
+  STATE.prep = applyPatch(STATE.prep);
+  applyDone(STATE.prep);
+
+  // Day
+  STATE.day = applyPatch(STATE.day);
+  applyDone(STATE.day);
+
+  // Resp
+  STATE.resp.forEach(p => {
+    p.tasks = applyPatch(p.tasks);
+    applyDone(p.tasks);
+  });
+
+  // Packing lists
+  STATE.packMax.buy = applyPatch(STATE.packMax.buy); applyDone(STATE.packMax.buy);
+  STATE.packMax.pack = applyPatch(STATE.packMax.pack); applyDone(STATE.packMax.pack);
+  STATE.packMax.morning = applyPatch(STATE.packMax.morning); applyDone(STATE.packMax.morning);
+  STATE.packLaura.buy = applyPatch(STATE.packLaura.buy); applyDone(STATE.packLaura.buy);
+  STATE.packLaura.pack = applyPatch(STATE.packLaura.pack); applyDone(STATE.packLaura.pack);
 
   // Append user-added items
   const asArr = (x) => Array.isArray(x) ? x : (x ? Object.values(x) : []);
